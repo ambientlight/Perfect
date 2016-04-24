@@ -75,7 +75,7 @@ public class CURL {
 	func setCurlOpts() {
 		curl_easy_setopt_long(self.curl!, CURLOPT_NOSIGNAL, 1)
 		let opaqueMe = UnsafeMutablePointer<Void>(OpaquePointer(bitPattern: Unmanaged.passUnretained(self)))
-	#if Ubuntu_14_04
+	#if os(Linux)
 		setOption(option: CURLOPT_WRITEHEADER, v: opaqueMe)
 		setOption(option: CURLOPT_FILE, v: opaqueMe)
 		setOption(option: CURLOPT_INFILE, v: opaqueMe)
