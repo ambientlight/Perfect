@@ -37,29 +37,29 @@ class PerfectLibTests: XCTestCase {
 	}
 	
 	func testConcurrentQueue() {
-		let q = Threading.getQueue("concurrent", type: .Concurrent)
+		let q = Threading.getQueue(name: "concurrent", type: .Concurrent)
 		
 		var t1 = 0, t2 = 0, t3 = 0
 		
 		q.dispatch {
 			t1 = 1
-			Threading.sleep(5000)
+			Threading.sleep(milliseconds: 5000)
 		}
 		q.dispatch {
 			t2 = 1
-			Threading.sleep(5000)
+			Threading.sleep(milliseconds: 5000)
 		}
 		q.dispatch {
 			t3 = 1
-			Threading.sleep(5000)
+			Threading.sleep(milliseconds: 5000)
 		}
-		Threading.sleep(1000)
+		Threading.sleep(milliseconds: 1000)
 		
 		XCTAssert(t1 == 1 && t2 == 1 && t3 == 1)
 	}
 	
 	func testSerialQueue() {
-		let q = Threading.getQueue("serial", type: .Serial)
+		let q = Threading.getQueue(name: "serial", type: .Serial)
 		
 		var t1 = 0
 		
@@ -75,7 +75,7 @@ class PerfectLibTests: XCTestCase {
 			XCTAssert(t1 == 2)
 			t1 = 3
 		}
-		Threading.sleep(2000)
+		Threading.sleep(milliseconds: 2000)
 		XCTAssert(t1 == 3)
 	}
 	
@@ -87,14 +87,14 @@ class PerfectLibTests: XCTestCase {
 			
 			var one = 0
 			override func setJSONValues(values: [String : Any]) {
-				self.one = getJSONValue("One", from: values, defaultValue: 42)
+				self.one = getJSONValue(named: "One", from: values, defaultValue: 42)
 			}
 			override func getJSONValues() -> [String : Any] {
 				return [JSONDecoding.objectIdentifierKey:Test.registerName, "One":1]
 			}
 		}
 		
-		JSONDecoding.registerJSONDecodable(Test.registerName, creator: { return Test() })
+		JSONDecoding.registerJSONDecodable(name: Test.registerName, creator: { return Test() })
 		
 		do {
 			let encoded = try Test().jsonEncodedString()
@@ -236,24 +236,24 @@ class PerfectLibTests: XCTestCase {
 		let boundary = "---------------------------9051914041544843365972754266"
 		
 		var testData = Array<Dictionary<String, String>>()
-		let numTestFields = 1 + _rand(100)
+		let numTestFields = 1 + _rand(to: 100)
 		
 		for idx in 0..<numTestFields {
 			var testDic = Dictionary<String, String>()
 			
 			testDic["name"] = "test_field_\(idx)"
 			
-			let isFile = _rand(3) == 2
+			let isFile = _rand(to: 3) == 2
 			if isFile {
 				var testValue = ""
-				for _ in 1..<_rand(1000) {
+				for _ in 1..<_rand(to: 1000) {
 					testValue.append("O")
 				}
 				testDic["value"] = testValue
 				testDic["file"] = "1"
 			} else {
 				var testValue = ""
-				for _ in 0..<_rand(1000) {
+				for _ in 0..<_rand(to: 1000) {
 					testValue.append("O")
 				}
 				testDic["value"] = testValue
@@ -268,7 +268,7 @@ class PerfectLibTests: XCTestCase {
 			try file.openTruncate()
 			
 			for testDic in testData {
-				try file.writeString("--" + boundary + "\r\n")
+				try file.writeString(s: "--" + boundary + "\r\n")
 				
 				let testName = testDic["name"]!
 				let testValue = testDic["value"]!
@@ -276,21 +276,21 @@ class PerfectLibTests: XCTestCase {
 				
 				if let _ = isFile {
 					
-					try file.writeString("Content-Disposition: form-data; name=\"\(testName)\"; filename=\"\(testName).txt\"\r\n")
-					try file.writeString("Content-Type: text/plain\r\n\r\n")
-					try file.writeString(testValue)
-					try file.writeString("\r\n")
+					try file.writeString(s: "Content-Disposition: form-data; name=\"\(testName)\"; filename=\"\(testName).txt\"\r\n")
+					try file.writeString(s: "Content-Type: text/plain\r\n\r\n")
+					try file.writeString(s: testValue)
+					try file.writeString(s: "\r\n")
 					
 				} else {
 					
-					try file.writeString("Content-Disposition: form-data; name=\"\(testName)\"\r\n\r\n")
-					try file.writeString(testValue)
-					try file.writeString("\r\n")
+					try file.writeString(s: "Content-Disposition: form-data; name=\"\(testName)\"\r\n\r\n")
+					try file.writeString(s: testValue)
+					try file.writeString(s: "\r\n")
 				}
 				
 			}
 			
-			try file.writeString("--" + boundary + "--")
+			try file.writeString(s: "--" + boundary + "--")
 			
 			for num in 1...2048 {
 				
@@ -303,10 +303,10 @@ class PerfectLibTests: XCTestCase {
 				
 				XCTAssertEqual(mimeReader.boundary, "--" + boundary)
 				
-				var bytes = try file.readSomeBytes(num)
+				var bytes = try file.readSomeBytes(count: num)
 				while bytes.count > 0 {
-					mimeReader.addToBuffer(bytes)
-					bytes = try file.readSomeBytes(num)
+					mimeReader.addToBuffer(bytes: bytes)
+					bytes = try file.readSomeBytes(count: num)
 				}
 				
 				XCTAssertEqual(mimeReader.bodySpecs.count, testData.count)
@@ -321,10 +321,10 @@ class PerfectLibTests: XCTestCase {
 						
 						let file = File(body.tmpFileName)
 						try file.openRead()
-						let contents = try file.readSomeBytes(file.size())
+						let contents = try file.readSomeBytes(count: file.size())
 						file.close()
 						
-						let decoded = UTF8Encoding.encode(contents)
+                        let decoded = UTF8Encoding.encode(bytes: contents)
 						let v = testDic["value"]!
 						XCTAssertEqual(v, decoded)
 					} else {
@@ -370,18 +370,18 @@ class PerfectLibTests: XCTestCase {
 			try file.openTruncate()
 			
 			for testDic in testData {
-				try file.writeString("--" + boundary + "\r\n")
+				try file.writeString(s: "--" + boundary + "\r\n")
 				
 				let testName = testDic["name"]!
 				let testValue = testDic["value"]!
 					
-				try file.writeString("Content-Disposition: form-data; name=\"\(testName)\"; filename=\"\(testName).txt\"\r\n")
-				try file.writeString("Content-Type: text/plain\r\n\r\n")
-				try file.writeString(testValue)
-				try file.writeString("\r\n")
+				try file.writeString(s: "Content-Disposition: form-data; name=\"\(testName)\"; filename=\"\(testName).txt\"\r\n")
+				try file.writeString(s: "Content-Type: text/plain\r\n\r\n")
+				try file.writeString(s: testValue)
+				try file.writeString(s: "\r\n")
 			}
 			
-			try file.writeString("--" + boundary + "--")
+			try file.writeString(s: "--" + boundary + "--")
 			
 			for num in 1...1 {
 				
@@ -394,10 +394,10 @@ class PerfectLibTests: XCTestCase {
 				
 				XCTAssertEqual(mimeReader.boundary, "--" + boundary)
 				
-				var bytes = try file.readSomeBytes(num)
+				var bytes = try file.readSomeBytes(count: num)
 				while bytes.count > 0 {
-					mimeReader.addToBuffer(bytes)
-					bytes = try file.readSomeBytes(num)
+					mimeReader.addToBuffer(bytes: bytes)
+					bytes = try file.readSomeBytes(count: num)
 				}
 				
 				XCTAssertEqual(mimeReader.bodySpecs.count, testData.count)
@@ -411,10 +411,10 @@ class PerfectLibTests: XCTestCase {
 					
 					let file = File(body.tmpFileName)
 					try file.openRead()
-					let contents = try file.readSomeBytes(file.size())
+					let contents = try file.readSomeBytes(count: file.size())
 					file.close()
 					
-					let decoded = UTF8Encoding.encode(contents)
+                    let decoded = UTF8Encoding.encode(bytes: contents)
 					let v = testDic["value"]!
 					XCTAssertEqual(v, decoded)
 					
@@ -439,27 +439,27 @@ class PerfectLibTests: XCTestCase {
 			let server = NetTCP()
 			let client = NetTCP()
 			
-			try server.bind(port, address: "127.0.0.1")
+			try server.bind(port: port, address: "127.0.0.1")
 			server.listen()
 			
 			let serverExpectation = self.expectation(withDescription: "server")
 			let clientExpectation = self.expectation(withDescription: "client")
 			
-			try server.accept(NetEvent.noTimeout) {
+			try server.accept(timeoutSeconds: NetEvent.noTimeout) {
 				(inn: NetTCP?) -> () in
 				guard let n = inn else {
 					XCTAssertNotNil(inn)
 					return
 				}
 				let b = Bytes()
-				b.import8Bits(1)
+				b.import8Bits(byte: 1)
 				do {
-					n.write(b.data) {
+                    n.write(bytes: b.data) {
 						sent in
 						
 						XCTAssertTrue(sent == 1)
 						
-						n.readBytesFully(1, timeoutSeconds: 5.0) {
+						n.readBytesFully(count: 1, timeoutSeconds: 5.0) {
 							read in
 							XCTAssert(read != nil)
 							XCTAssert(read?.count == 1)
@@ -470,22 +470,22 @@ class PerfectLibTests: XCTestCase {
 				}
 			}
 			
-			try client.connect("127.0.0.1", port: port, timeoutSeconds: 5) {
+			try client.connect(address: "127.0.0.1", port: port, timeoutSeconds: 5) {
 				(inn: NetTCP?) -> () in
 				guard let n = inn else {
 					XCTAssertNotNil(inn)
 					return
 				}
 				let b = Bytes()
-				b.import8Bits(1)
+				b.import8Bits(byte: 1)
 				do {
-					n.readBytesFully(1, timeoutSeconds: 5.0) {
+					n.readBytesFully(count: 1, timeoutSeconds: 5.0) {
 						read in
 						
 						XCTAssert(read != nil)
 						XCTAssert(read!.count == 1)
 						
-						n.write(b.data) {
+                        n.write(bytes: b.data) {
 							sent in
 							
 							XCTAssertTrue(sent == 1)
@@ -511,7 +511,7 @@ class PerfectLibTests: XCTestCase {
 
 	func testThreadSleep() {
 		let now = getNow()
-		Threading.sleep(1900)
+		Threading.sleep(milliseconds: 1900)
 		let nower = getNow()
 		XCTAssert(nower - now >= 2.0)
 	}
@@ -525,39 +525,39 @@ class PerfectLibTests: XCTestCase {
 			let server = NetTCP()
 			let client = NetTCP()
 			
-			try server.bind(port, address: "127.0.0.1")
+			try server.bind(port: port, address: "127.0.0.1")
 			server.listen()
 			
 			let serverExpectation = self.expectation(withDescription: "server")
 			let clientExpectation = self.expectation(withDescription: "client")
 			
-			try server.accept(NetEvent.noTimeout) {
+			try server.accept(timeoutSeconds: NetEvent.noTimeout) {
 				(inn: NetTCP?) -> () in
 				guard let _ = inn else {
 					XCTAssertNotNil(inn)
 					return
 				}
-				Threading.sleep(5000)
+				Threading.sleep(milliseconds: 5000)
 				serverExpectation.fulfill()
 			}
 			
 			var once = false
-			try client.connect("127.0.0.1", port: port, timeoutSeconds: 5) {
+			try client.connect(address: "127.0.0.1", port: port, timeoutSeconds: 5) {
 				(inn: NetTCP?) -> () in
 				guard let n = inn else {
 					XCTAssertNotNil(inn)
 					return
 				}
 				let b = Bytes()
-				b.import8Bits(1)
+				b.import8Bits(byte: 1)
 				do {
-					n.readBytesFully(1, timeoutSeconds: 2.0) {
+					n.readBytesFully(count: 1, timeoutSeconds: 2.0) {
 						read in
 						
 						XCTAssert(read == nil)
 						XCTAssert(once == false)
 						once = !once
-						Threading.sleep(7000)
+						Threading.sleep(milliseconds: 7000)
 						XCTAssert(once == true)
 						clientExpectation.fulfill()
 					}
@@ -590,26 +590,26 @@ class PerfectLibTests: XCTestCase {
 		do {
 			
 			try testFile.openTruncate()
-			try testFile.writeString(testContents)
+			try testFile.writeString(s: testContents)
 			testFile.close()
 			try testFile.openRead()
 			
 			let server = NetNamedPipe()
 			let client = NetNamedPipe()
 			
-			try server.bind(port)
+            try server.bind(address: port)
 			server.listen()
 			
 			let serverExpectation = self.expectation(withDescription: "server")
 			let clientExpectation = self.expectation(withDescription: "client")
 			
-			try server.accept(NetEvent.noTimeout) {
+			try server.accept(timeoutSeconds: NetEvent.noTimeout) {
 				(inn: NetTCP?) -> () in
 				let n = inn as? NetNamedPipe
 				XCTAssertNotNil(n)
 				
 				do {
-					try n?.sendFile(testFile) {
+                    try n?.sendFile(file: testFile) {
 						(b: Bool) in
 						
 						XCTAssertTrue(b)
@@ -624,7 +624,7 @@ class PerfectLibTests: XCTestCase {
 				}
 			}
 			
-			try client.connect(port, timeoutSeconds: 5) {
+			try client.connect(address: port, timeoutSeconds: 5) {
 				(inn: NetTCP?) -> () in
 				let n = inn as? NetNamedPipe
 				XCTAssertNotNil(n)
@@ -636,9 +636,9 @@ class PerfectLibTests: XCTestCase {
 						XCTAssertNotNil(f)
 						
 						do {
-							let testDataRead = try f!.readSomeBytes(f!.size())
+							let testDataRead = try f!.readSomeBytes(count: f!.size())
 							if testDataRead.count > 0 {
-								XCTAssertEqual(UTF8Encoding.encode(testDataRead), testContents)
+                                XCTAssertEqual(UTF8Encoding.encode(bytes: testDataRead), testContents)
 							} else {
 								XCTAssertTrue(false, "Got no data from received file")
 							}
@@ -680,11 +680,11 @@ class PerfectLibTests: XCTestCase {
 			XCTAssertNotNil(proc.stdin)
 			
 			let fileOut = proc.stdout!
-			let data = try fileOut.readSomeBytes(4096)
+			let data = try fileOut.readSomeBytes(count: 4096)
 			
 			XCTAssertTrue(data.count > 0)
 			
-			print(UTF8Encoding.encode(data))
+            print(UTF8Encoding.encode(bytes: data))
 			let waitRes = try proc.wait()
 			
 			XCTAssertEqual(0, waitRes)
@@ -732,7 +732,7 @@ class PerfectLibTests: XCTestCase {
 		let find = "DEF"
 		let rep = "FED"
 		
-		let res = src.stringByReplacingString(find, withString: rep)
+		let res = src.stringByReplacingString(find: find, withString: rep)
 		
 		XCTAssert(res == test)
 	}
@@ -743,7 +743,7 @@ class PerfectLibTests: XCTestCase {
 		let find = "DEF"
 		let rep = "FED"
 		
-		let res = src.stringByReplacingString(find, withString: rep)
+		let res = src.stringByReplacingString(find: find, withString: rep)
 		
 		XCTAssert(res == src)
 	}
@@ -754,7 +754,7 @@ class PerfectLibTests: XCTestCase {
 		let find = ""
 		let rep = "FED"
 		
-		let res = src.stringByReplacingString(find, withString: rep)
+		let res = src.stringByReplacingString(find: find, withString: rep)
 		
 		XCTAssert(res == src)
 	}
@@ -762,7 +762,7 @@ class PerfectLibTests: XCTestCase {
 	func testSubstringTo() {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		let res = src.substringTo(src.startIndex.advanced(by: 5))
+        let res = src.substring(to: src.startIndex.advanced(by: 5))
 		
 		XCTAssert(res == "ABCDE")
 	}
@@ -771,14 +771,14 @@ class PerfectLibTests: XCTestCase {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		
-		let res = src.rangeOf("DEF")
+        let res = src.range(of: "DEF")
 		XCTAssert(res == src.startIndex.advanced(by: 3)..<src.startIndex.advanced(by: 6))
 		
-		let res2 = src.rangeOf("FED")
+        let res2 = src.range(of: "FED")
 		XCTAssert(res2 == nil)
 		
 		
-		let res3 = src.rangeOf("def", ignoreCase: true)
+		let res3 = src.rangeOf(string: "def", ignoreCase: true)
 		XCTAssert(res3 == src.startIndex.advanced(by: 3)..<src.startIndex.advanced(by: 6))
 	}
 	
@@ -786,14 +786,14 @@ class PerfectLibTests: XCTestCase {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		let range = src.startIndex.advanced(by: 3)..<src.startIndex.advanced(by: 6)
-		XCTAssert("DEF" == src.substringWith(range))
+        XCTAssert("DEF" == src.substring(with: range))
 	}
 	
 	func testICUFormatDate() {
 		let dateThen = 0.0
 		let formatStr = "%a, %d-%b-%Y %T GMT"
 		do {
-			let result = try formatDate(dateThen, format: formatStr, timezone: "GMT")
+			let result = try formatDate(date: dateThen, format: formatStr, timezone: "GMT")
 			XCTAssertEqual(result, "Thu, 01-Jan-1970 00:00:00 GMT")
 		} catch let e {
 			print("\(e)")
@@ -815,11 +815,11 @@ class PerfectLibTests: XCTestCase {
 	func testMustacheParser1() {
 		let usingTemplate = "TOP {\n{{#name}}\n{{name}}{{/name}}\n}\nBOTTOM"
 		do {
-			let template = try MustacheParser().parse(usingTemplate)
+			let template = try MustacheParser().parse(string: usingTemplate)
 			let d = ["name":"The name"] as [String:Any]
 			let context = MustacheEvaluationContext(map: d)
 			let collector = MustacheEvaluationOutputCollector()
-			template.evaluate(context, collector: collector)
+			template.evaluate(context: context, collector: collector)
 			
 			XCTAssertEqual(collector.asString(), "TOP {\n\nThe name\n}\nBOTTOM")
 		} catch {
@@ -863,8 +863,8 @@ class PerfectLibTests: XCTestCase {
 		XCTAssert(header.count > 0)
 		XCTAssert(body.count > 0)
 		
-		let headerStr = UTF8Encoding.encode(header)
-		let bodyStr = UTF8Encoding.encode(body)
+        let headerStr = UTF8Encoding.encode(bytes: header)
+        let bodyStr = UTF8Encoding.encode(bytes: body)
 		
 		print(headerStr)
 		print(bodyStr)
@@ -875,11 +875,11 @@ class PerfectLibTests: XCTestCase {
         let header = ("Accept", "application/json")
         
         let curl = CURL(url: url)
-        curl.setOption(CURLOPT_HTTPHEADER, s: "\(header.0): \(header.1)" )
+        curl.setOption(option: CURLOPT_HTTPHEADER, s: "\(header.0): \(header.1)" )
         let response = curl.performFully()
         XCTAssert(response.0 == 0)
         
-        let body = UTF8Encoding.encode(response.2)
+        let body = UTF8Encoding.encode(bytes: response.2)
         do {
             guard
                 let jsonMap = try body.jsonDecode() as? [String: Any],
@@ -899,17 +899,17 @@ class PerfectLibTests: XCTestCase {
         let url = "https://httpbin.org/post"
         let curl = CURL(url: url)
         
-        curl.setOption(CURLOPT_POST, int: 1)
+        curl.setOption(option: CURLOPT_POST, int: 1)
         
         let postParamString = "key1=value1&key2=value2"
-        let byteArray = UTF8Encoding.decode(postParamString)
-        curl.setOption(CURLOPT_POSTFIELDS, v: UnsafeMutablePointer<UInt8>(byteArray))
-        curl.setOption(CURLOPT_POSTFIELDSIZE, int: byteArray.count)
+        let byteArray = UTF8Encoding.decode(str: postParamString)
+        curl.setOption(option: CURLOPT_POSTFIELDS, v: UnsafeMutablePointer<UInt8>(byteArray))
+        curl.setOption(option: CURLOPT_POSTFIELDSIZE, int: byteArray.count)
         
         let response = curl.performFully()
         XCTAssert(response.0 == 0)
         
-        let body = UTF8Encoding.encode(response.2)
+        let body = UTF8Encoding.encode(bytes: response.2)
         do {
             guard
                 let jsonMap = try body.jsonDecode() as? [String: Any],
@@ -936,10 +936,10 @@ class PerfectLibTests: XCTestCase {
 		let net = NetTCPSSL()
 		
 		let setOk = net.setDefaultVerifyPaths()
-		XCTAssert(setOk, "Unable to setDefaultVerifyPaths \(net.sslErrorCode(1))")
+		XCTAssert(setOk, "Unable to setDefaultVerifyPaths \(net.sslErrorCode(resultCode: 1))")
 		
 		do {
-			try net.connect(address, port: 443, timeoutSeconds: 5.0) {
+			try net.connect(address: address, port: 443, timeoutSeconds: 5.0) {
 				(net: NetTCP?) -> () in
 				
 				if let ssl = net as? NetTCPSSL {
@@ -947,7 +947,7 @@ class PerfectLibTests: XCTestCase {
 					ssl.beginSSL {
 						(success: Bool) in
 						
-						XCTAssert(success, "Unable to begin SSL \(ssl.errorStr(Int32(ssl.errorCode())))")
+						XCTAssert(success, "Unable to begin SSL \(ssl.errorStr(errorCode: Int32(ssl.errorCode())))")
 						if !success {
 							clientExpectation.fulfill()
 							return
@@ -960,24 +960,24 @@ class PerfectLibTests: XCTestCase {
 							XCTAssert(peerKey != nil && peerKey!.count > 0)
 						}
 						
-						ssl.writeBytes(requestString) {
+						ssl.writeBytes(bytes: requestString) {
 							(sent:Int) -> () in
 							
 							XCTAssert(sent == requestCount)
 							
-							ssl.readBytesFully(1, timeoutSeconds: 5.0) {
+							ssl.readBytesFully(count: 1, timeoutSeconds: 5.0) {
 								(readBytes: [UInt8]?) -> () in
 								
 								XCTAssert(readBytes != nil && readBytes!.count > 0)
 								
-								let s1 = UTF8Encoding.encode(readBytes!)
+                                let s1 = UTF8Encoding.encode(bytes: readBytes!)
 								
-								ssl.readSomeBytes(4096) {
+								ssl.readSomeBytes(count: 4096) {
 									(readBytes: [UInt8]?) -> () in
 									
 									XCTAssert(readBytes != nil && readBytes!.count > 0)
 									
-									let s = s1 + UTF8Encoding.encode(readBytes!)
+                                    let s = s1 + UTF8Encoding.encode(bytes: readBytes!)
 									
 									XCTAssert(s.hasPrefix("HTTP/1.1 200 OK"))
 									
@@ -1076,19 +1076,19 @@ class PerfectLibTests: XCTestCase {
 			("content-length", "33")]
 		do {
 			for (n, v) in headers {
-				try encoder.encodeHeader(b, name: UTF8Encoding.decode(n), value: UTF8Encoding.decode(v), sensitive: false)
+                try encoder.encodeHeader(out: b, name: UTF8Encoding.decode(str: n), value: UTF8Encoding.decode(str: v), sensitive: false)
 			}
 			
 			class Listener: HeaderListener {
 				var headers = [(String, String)]()
 				func addHeader(name: [UInt8], value: [UInt8], sensitive: Bool) {
-					self.headers.append((UTF8Encoding.encode(name), UTF8Encoding.encode(value)))
+                    self.headers.append((UTF8Encoding.encode(bytes: name), UTF8Encoding.encode(bytes: value)))
 				}
 			}
 			
 			let decoder = HPACKDecoder(maxHeaderSize: 256, maxHeaderTableSize: 256)
 			let l = Listener()
-			try decoder.decode(b, headerListener: l)
+			try decoder.decode(input: b, headerListener: l)
 			
 			XCTAssert(l.headers.count == headers.count)
 			
