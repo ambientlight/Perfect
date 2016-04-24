@@ -41,7 +41,7 @@ public class JSONDecoding {
 		guard let objkey = values[JSONDecoding.objectIdentifierKey] as? String else {
 			return nil
 		}
-		return JSONDecoding.createJSONConvertibleObject(objkey, values: values)
+		return JSONDecoding.createJSONConvertibleObject(name: objkey, values: values)
 	}
 	
 	static public func createJSONConvertibleObject(name: String, values:[String:Any]) -> JSONConvertibleObject? {
@@ -49,7 +49,7 @@ public class JSONDecoding {
 			return nil
 		}
 		let jsonObj = creator()
-		jsonObj.setJSONValues(values)
+		jsonObj.setJSONValues(values: values)
 		return jsonObj
 	}
 }
@@ -221,7 +221,7 @@ extension Array: JSONConvertible {
 			} else {
 				first = false
 			}
-			s.append(try jsonEncodedStringWorkAround(v))
+			s.append(try jsonEncodedStringWorkAround(o: v))
 		}
 		s.append("]")
 		return s
@@ -245,7 +245,7 @@ extension Dictionary: JSONConvertible {
 			}
 			s.append(try strKey.jsonEncodedString())
 			s.append(":")
-			s.append(try jsonEncodedStringWorkAround(v))
+			s.append(try jsonEncodedStringWorkAround(o: v))
 		}
 		
 		s.append("}")
@@ -355,7 +355,7 @@ private class JSONDecodeState {
 				}
 			}
 			if let objid = d[JSONDecoding.objectIdentifierKey] as? String {
-				if let o = JSONDecoding.createJSONConvertibleObject(objid, values: d) {
+				if let o = JSONDecoding.createJSONConvertibleObject(name: objid, values: d) {
 					return o
 				}
 			}
@@ -366,7 +366,7 @@ private class JSONDecodeState {
 			if c.isWhiteSpace() {
 				// nothing
 			} else if c.isDigit() || c == "-" || c == "+" {
-				return try readNumber(c)
+				return try readNumber(firstChar: c)
 			} else if c == "t" || c == "T" {
 				return try readTrue()
 			} else if c == "f" || c == "F" {

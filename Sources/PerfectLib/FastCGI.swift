@@ -111,12 +111,12 @@ class FastCGIRequest : WebConnection {
 				self.stdin = b
 			} else {
 				self.mimes = MimeReader(contentType!)//, Int(requestParams["CONTENT_LENGTH"] ?? "0")!)
-				self.mimes!.addToBuffer(b)
+				self.mimes!.addToBuffer(bytes: b)
 			}
 		} else if self.stdin != nil {
 			self.stdin!.append(contentsOf: b)
 		} else {
-			self.mimes!.addToBuffer(b)
+			self.mimes!.addToBuffer(bytes: b)
 		}
 	}
 	
@@ -129,43 +129,43 @@ class FastCGIRequest : WebConnection {
 			wroteHeader = true
 			
 			let statusLine = "Status: \(statusCode) \(statusMsg)\r\n"
-			let firstBytes = makeStdoutBody(Int(requestId), data: [UInt8](statusLine.utf8) + b)
-			writeBytes(firstBytes)
+			let firstBytes = makeStdoutBody(requestId: Int(requestId), data: [UInt8](statusLine.utf8) + b)
+			writeBytes(b: firstBytes)
 			
 		} else if b.count > 0 {
-			let furtherBytes = makeStdoutBody(Int(requestId), data: b)
-			writeBytes(furtherBytes)
+			let furtherBytes = makeStdoutBody(requestId: Int(requestId), data: b)
+			writeBytes(b: furtherBytes)
 		}
 	}
 	
 	func writeBodyBytes(b: [UInt8]) {
 		if !wroteHeader {
 			header += "\r\n" // final CRLF
-			writeHeaderBytes([UInt8](header.utf8))
+			writeHeaderBytes(b: [UInt8](header.utf8))
 			header = ""
 		}
-		let b = makeStdoutBody(Int(requestId), data: b)
-		writeBytes(b)
+		let b = makeStdoutBody(requestId: Int(requestId), data: b)
+		writeBytes(b: b)
 	}
 	
 	func writeBytes(b: [UInt8]) {
-		self.connection.writeBytesFully(b)
+		self.connection.writeBytesFully(bytes: b)
 	}
 	
 	func makeEndRequestBody(requestId: Int, appStatus: Int, protocolStatus: Int) -> [UInt8] {
 		
 		let b = Bytes()
-		b.import8Bits(fcgiVersion1)
-			.import8Bits(fcgiEndRequest)
-			.import16Bits(htons(UInt16(requestId)))
-			.import16Bits(htons(UInt16(8)))
-			.import8Bits(0)
-			.import8Bits(0)
-			.import32Bits(htonl(UInt32(appStatus)))
-			.import8Bits(UInt8(protocolStatus))
-			.import8Bits(0)
-			.import8Bits(0)
-			.import8Bits(0)
+		b.import8Bits(byte: fcgiVersion1)
+			.import8Bits(byte: fcgiEndRequest)
+			.import16Bits(short: htons(UInt16(requestId)))
+			.import16Bits(short: htons(UInt16(8)))
+			.import8Bits(byte: 0)
+			.import8Bits(byte: 0)
+			.import32Bits(int: htonl(UInt32(appStatus)))
+			.import8Bits(byte: UInt8(protocolStatus))
+			.import8Bits(byte: 0)
+			.import8Bits(byte: 0)
+			.import8Bits(byte: 0)
 		
 		return b.data
 	}
@@ -174,25 +174,25 @@ class FastCGIRequest : WebConnection {
 		let b = Bytes()
 		
 		if count > fcgiBodyChunkSize {
-			b.importBytes(makeStdoutBody(requestId, data: data, firstPos: firstPos, count: fcgiBodyChunkSize))
-			b.importBytes(makeStdoutBody(requestId, data: data, firstPos: fcgiBodyChunkSize + firstPos, count: count - fcgiBodyChunkSize))
+            b.importBytes(bytes: makeStdoutBody(requestId: requestId, data: data, firstPos: firstPos, count: fcgiBodyChunkSize))
+            b.importBytes(bytes: makeStdoutBody(requestId: requestId, data: data, firstPos: fcgiBodyChunkSize + firstPos, count: count - fcgiBodyChunkSize))
 		} else {
 			
 			let padBytes = count % 8
-			b.import8Bits(fcgiVersion1)
-				.import8Bits(fcgiStdout)
-				.import16Bits(htons(UInt16(requestId)))
-				.import16Bits(htons(UInt16(count)))
-				.import8Bits(UInt8(padBytes))
-				.import8Bits(0)
+			b.import8Bits(byte: fcgiVersion1)
+				.import8Bits(byte: fcgiStdout)
+				.import16Bits(short: htons(UInt16(requestId)))
+				.import16Bits(short: htons(UInt16(count)))
+				.import8Bits(byte: UInt8(padBytes))
+				.import8Bits(byte: 0)
 			if firstPos == 0 && count == data.count {
-				b.importBytes(data)
+                b.importBytes(bytes: data)
 			} else {
-				b.importBytes(data[firstPos..<count])
+                b.importBytes(bytes: data[firstPos..<count])
 			}
 			if padBytes > 0 {
 				for _ in 1...padBytes {
-					b.import8Bits(0)
+					b.import8Bits(byte: 0)
 				}
 			}
 		}
@@ -200,11 +200,11 @@ class FastCGIRequest : WebConnection {
 	}
 	
 	func makeStdoutBody(requestId: Int, data: [UInt8]) -> [UInt8] {
-		return makeStdoutBody(requestId, data: data, firstPos: 0, count: data.count)
+		return makeStdoutBody(requestId: requestId, data: data, firstPos: 0, count: data.count)
 	}
 	
 	func readRecord(continuation: (FastCGIRecord?) -> ()) {
-		self.connection.readBytesFully(fcgiBaseRecordSize, timeoutSeconds: fcgiTimeoutSeconds) {
+		self.connection.readBytesFully(count: fcgiBaseRecordSize, timeoutSeconds: fcgiTimeoutSeconds) {
             [weak self] (b: [UInt8]?) -> () in
 			
 			guard let recBytes = b else {
@@ -220,19 +220,19 @@ class FastCGIRequest : WebConnection {
 			record.paddingLength = recBytes[6];
 			record.reserved = recBytes[7]
 			
-			self?.readRecordContent(record, continuation: continuation)
+			self?.readRecordContent(record: record, continuation: continuation)
 		}
 	}
 	
 	func readRecordContent(record: FastCGIRecord, continuation: (FastCGIRecord?) -> ()) {
 		if record.contentLength > 0 {
 			
-			self.connection.readBytesFully(Int(record.contentLength), timeoutSeconds: fcgiTimeoutSeconds, completion: {
+			self.connection.readBytesFully(count: Int(record.contentLength), timeoutSeconds: fcgiTimeoutSeconds, completion: {
 				[weak self] (b:[UInt8]?) -> () in
 				if let contentBytes = b {
 					
 					record.content = contentBytes
-					self?.readRecordPadding(record, continuation: continuation)
+					self?.readRecordPadding(record: record, continuation: continuation)
 					
 				} else {
 					continuation(nil)
@@ -240,14 +240,14 @@ class FastCGIRequest : WebConnection {
 			})
 			
 		} else {
-			self.readRecordPadding(record, continuation: continuation)
+			self.readRecordPadding(record: record, continuation: continuation)
 		}
 	}
 	
 	func readRecordPadding(record: FastCGIRecord, continuation: (FastCGIRecord?) -> ()) {
 		if record.paddingLength > 0 {
 			
-			self.connection.readBytesFully(Int(record.paddingLength), timeoutSeconds: fcgiTimeoutSeconds, completion: {
+			self.connection.readBytesFully(count: Int(record.paddingLength), timeoutSeconds: fcgiTimeoutSeconds, completion: {
 				(b:[UInt8]?) -> () in
 				if let paddingBytes = b {
 					

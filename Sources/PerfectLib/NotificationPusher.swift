@@ -137,7 +137,7 @@ public struct NotificationResponse {
 	}
 	/// The body data bytes converted to String.
 	public var stringBody: String {
-		return UTF8Encoding.encode(self.body)
+        return UTF8Encoding.encode(bytes: self.body)
 	}
 }
 
@@ -210,7 +210,7 @@ public class NotificationPusher {
 				// add a new connected stream
 				
 				c.configurator(net!.net)
-				net!.connect(self.notificationHostIOS, port: iosNotificationPort, ssl: true, timeoutSeconds: 5.0) {
+				net!.connect(host: self.notificationHostIOS, port: iosNotificationPort, ssl: true, timeoutSeconds: 5.0) {
 					b in
 					if b {
 						callback(net!)
@@ -267,13 +267,13 @@ public class NotificationPusher {
 	/// Provide a callback with which to receive the response.
 	public func pushIOS(configurationName: String, deviceToken: String, expiration: UInt32, priority: UInt8, notificationItems: [IOSNotificationItem], callback: (NotificationResponse) -> ()) {
 		
-		NotificationPusher.getStreamIOS(configurationName) {
+		NotificationPusher.getStreamIOS(configurationName: configurationName) {
 			client in
 			if let c = client {
-				self.pushIOS(c, deviceTokens: [deviceToken], expiration: expiration, priority: priority, notificationItems: notificationItems) {
+                self.pushIOS(client: c, deviceTokens: [deviceToken], expiration: expiration, priority: priority, notificationItems: notificationItems) {
 					responses in
 					
-					NotificationPusher.releaseStreamIOS(configurationName, net: c)
+					NotificationPusher.releaseStreamIOS(configurationName: configurationName, net: c)
 					
 					if responses.count == 1 {
 						callback(responses.first!)
@@ -295,13 +295,13 @@ public class NotificationPusher {
 	/// Provide a callback with which to receive the responses.
 	public func pushIOS(configurationName: String, deviceTokens: [String], expiration: UInt32, priority: UInt8, notificationItems: [IOSNotificationItem], callback: ([NotificationResponse]) -> ()) {
 		
-		NotificationPusher.getStreamIOS(configurationName) {
+		NotificationPusher.getStreamIOS(configurationName: configurationName) {
 			client in
 			if let c = client {
-				self.pushIOS(c, deviceTokens: deviceTokens, expiration: expiration, priority: priority, notificationItems: notificationItems) {
+                self.pushIOS(client: c, deviceTokens: deviceTokens, expiration: expiration, priority: priority, notificationItems: notificationItems) {
 					responses in
 					
-					NotificationPusher.releaseStreamIOS(configurationName, net: c)
+                    NotificationPusher.releaseStreamIOS(configurationName: configurationName, net: c)
 					
 					if responses.count == 1 {
 						callback(responses)
@@ -327,14 +327,14 @@ public class NotificationPusher {
 			request.headers["apns-topic"] = apnsTopic
 		}
 		request.requestURI = "/3/device/\(deviceToken)"
-		net.sendRequest(request) {
+		net.sendRequest(request: request) {
 			response, msg in
 			
 			if let r = response {
 				let code = r.getStatus().0
 				callback(NotificationResponse(code: code, body: r.bodyData))
 			} else {
-				callback(NotificationResponse(code: -1, body: UTF8Encoding.decode("No response")))
+				callback(NotificationResponse(code: -1, body: UTF8Encoding.decode(str: "No response")))
 			}
 		}
 	}
@@ -343,12 +343,12 @@ public class NotificationPusher {
 
 		var g = deviceTokens
 		if let next = g.next() {
-			pushIOS(client, deviceToken: next, expiration: expiration, priority: priority, notificationJson: notificationJson) {
+            pushIOS(net: client, deviceToken: next, expiration: expiration, priority: priority, notificationJson: notificationJson) {
 				response in
 				
 				self.responses.append(response)
 				
-				self.pushIOS(client, deviceTokens: g, expiration: expiration, priority: priority, notificationJson: notificationJson, callback: callback)
+                self.pushIOS(client: client, deviceTokens: g, expiration: expiration, priority: priority, notificationJson: notificationJson, callback: callback)
 			}
 		} else {
 			callback(self.responses)
@@ -358,8 +358,8 @@ public class NotificationPusher {
 	func pushIOS(client: HTTP2Client, deviceTokens: [String], expiration: UInt32, priority: UInt8, notificationItems: [IOSNotificationItem], callback: ([NotificationResponse]) -> ()) {
 		self.resetResponses()
 		let g = deviceTokens.makeIterator()
-		let jsond = UTF8Encoding.decode(self.itemsToPayloadString(notificationItems))
-		self.pushIOS(client, deviceTokens: g, expiration: expiration, priority: priority, notificationJson: jsond, callback: callback)
+		let jsond = UTF8Encoding.decode(str: self.itemsToPayloadString(notificationItems: notificationItems))
+        self.pushIOS(client: client, deviceTokens: g, expiration: expiration, priority: priority, notificationJson: jsond, callback: callback)
 	}
 	
 	func itemsToPayloadString(notificationItems: [IOSNotificationItem]) -> String {
@@ -421,7 +421,7 @@ public class NotificationPusher {
 
 private func jsonSerialize(o: Any) -> String? {
 	do {
-		return try jsonEncodedStringWorkAround(o)
+		return try jsonEncodedStringWorkAround(o: o)
 	} catch let e as JSONConversionError {
 		print("Could not convert to JSON: \(e)")
 	} catch {}

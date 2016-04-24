@@ -40,7 +40,7 @@ public struct Dir {
 	
 	/// Returns true if the directory exists
 	public func exists() -> Bool {
-		return exists(realPath())
+		return exists(path: realPath())
 	}
 	
 	func exists(path: String) -> Bool {
@@ -58,7 +58,7 @@ public struct Dir {
 		for component in pth.pathComponents {
 			if component != "/" {
 				currPath += component
-				if !exists(currPath) {
+				if !exists(path: currPath) {
 					let res = mkdir(currPath, mode_t(perms))
 					guard res != -1 else {
 						try ThrowFileError()
@@ -111,7 +111,7 @@ public struct Dir {
 		defer { closedir(dir) }
 		
 		var ent = dirent()
-		let entPtr = UnsafeMutablePointer<UnsafeMutablePointer<dirent>>(allocatingCapacity: 1)
+		let entPtr = UnsafeMutablePointer<UnsafeMutablePointer<dirent>?>(allocatingCapacity: 1)
 		defer { entPtr.deallocateCapacity(1) }
 		
 		while readdir_r(dir, &ent, entPtr) == 0 && entPtr.pointee != nil {

@@ -68,7 +68,7 @@ public class WebRequest {
 				let utf16 = key.utf16
 				let index = key.utf16.startIndex.advanced(by: 5)
 				let nKey = String(key.utf16.suffix(from: index))!
-				d[nKey.stringByReplacingString("_", withString: "-")] = value
+				d[nKey.stringByReplacingString(find: "_", withString: "-")] = value
 			}
 		}
 		return d
@@ -142,7 +142,7 @@ public class WebRequest {
 	/// For example, if the content-type were application/json you could use this function to get the raw JSON data as a String
 	public lazy var postBodyString: String = {
 		if let stdin = self.connection.stdin {
-			let qs = UTF8Encoding.encode(stdin)
+            let qs = UTF8Encoding.encode(bytes: stdin)
 			return qs
 		}
 		return ""
@@ -159,14 +159,14 @@ public class WebRequest {
 			}
 			
 		} else if let stdin = self.connection.stdin {
-			let qs = UTF8Encoding.encode(stdin)
+            let qs = UTF8Encoding.encode(bytes: stdin)
 			let semiSplit = qs.characters.split(separator: "&").map { String($0) }
 			for paramPair in semiSplit {
 				
 				let paramSplit = paramPair.characters.split(separator: "=", maxSplits: Int.max, omittingEmptySubsequences: false).map { String($0) }
 				if paramSplit.count == 2 {
-					let name = paramSplit[0].stringByReplacingString("+", withString: " ").stringByDecodingURL
-					let value = paramSplit[1].stringByReplacingString("+", withString: " ").stringByDecodingURL
+					let name = paramSplit[0].stringByReplacingString(find: "+", withString: " ").stringByDecodingURL
+					let value = paramSplit[1].stringByReplacingString(find: "+", withString: " ").stringByDecodingURL
 					if let n = name {
 						c.append((n, value ?? ""))
 					}
@@ -257,25 +257,25 @@ public class WebRequest {
 	}
 	
 	/// Provides access to the HTTP_CONNECTION parameter.
-	public var httpConnection: String? { get { return get("HTTP_CONNECTION") } set { set("HTTP_CONNECTION", value: newValue) } }
+    public var httpConnection: String? { get { return get(named: "HTTP_CONNECTION") } set { set(named: "HTTP_CONNECTION", value: newValue) } }
 	/// Provides access to the HTTP_COOKIE parameter.
-	public var httpCookie: String? { get { return get("HTTP_COOKIE") } set { set("HTTP_COOKIE", value: newValue) } }
+	public var httpCookie: String? { get { return get(named: "HTTP_COOKIE") } set { set(named: "HTTP_COOKIE", value: newValue) } }
 	/// Provides access to the HTTP_HOST parameter.
-	public var httpHost: String? { get { return get("HTTP_HOST") } set { set("HTTP_HOST", value: newValue) } }
+	public var httpHost: String? { get { return get(named: "HTTP_HOST") } set { set(named: "HTTP_HOST", value: newValue) } }
 	/// Provides access to the HTTP_USER_AGENT parameter.
-	public var httpUserAgent: String? { get { return get("HTTP_USER_AGENT") } set { set("HTTP_USER_AGENT", value: newValue) } }
+	public var httpUserAgent: String? { get { return get(named: "HTTP_USER_AGENT") } set { set(named: "HTTP_USER_AGENT", value: newValue) } }
 	/// Provides access to the HTTP_CACHE_CONTROL parameter.
-	public var httpCacheControl: String? { get { return get("HTTP_CACHE_CONTROL") } set { set("HTTP_CACHE_CONTROL", value: newValue) } }
+	public var httpCacheControl: String? { get { return get(named: "HTTP_CACHE_CONTROL") } set { set(named: "HTTP_CACHE_CONTROL", value: newValue) } }
 	/// Provides access to the HTTP_REFERER parameter.
-	public var httpReferer: String? { get { return get("HTTP_REFERER") } set { set("HTTP_REFERER", value: newValue) } }
+	public var httpReferer: String? { get { return get(named: "HTTP_REFERER") } set { set(named: "HTTP_REFERER", value: newValue) } }
 	/// Provides access to the HTTP_REFERER parameter but using the proper "referrer" spelling for pedants.
-	public var httpReferrer: String? { get { return get("HTTP_REFERER") } set { set("HTTP_REFERER", value: newValue) } }
+	public var httpReferrer: String? { get { return get(named: "HTTP_REFERER") } set { set(named: "HTTP_REFERER", value: newValue) } }
 	/// Provides access to the HTTP_ACCEPT parameter.
-	public var httpAccept: String? { get { return get("HTTP_ACCEPT") } set { set("HTTP_ACCEPT", value: newValue) } }
+	public var httpAccept: String? { get { return get(named: "HTTP_ACCEPT") } set { set(named: "HTTP_ACCEPT", value: newValue) } }
 	/// Provides access to the HTTP_ACCEPT_ENCODING parameter.
-	public var httpAcceptEncoding: String? { get { return get("HTTP_ACCEPT_ENCODING") } set { set("HTTP_ACCEPT_ENCODING", value: newValue) } }
+	public var httpAcceptEncoding: String? { get { return get(named: "HTTP_ACCEPT_ENCODING") } set { set(named: "HTTP_ACCEPT_ENCODING", value: newValue) } }
 	/// Provides access to the HTTP_ACCEPT_LANGUAGE parameter.
-	public var httpAcceptLanguage: String? { get { return get("HTTP_ACCEPT_LANGUAGE") } set { set("HTTP_ACCEPT_LANGUAGE", value: newValue) } }
+	public var httpAcceptLanguage: String? { get { return get(named: "HTTP_ACCEPT_LANGUAGE") } set { set(named: "HTTP_ACCEPT_LANGUAGE", value: newValue) } }
 	/// Provides access to the HTTP_AUTHORIZATION with all elements having been parsed using the `String.parseAuthentication` extension function.
 	public var httpAuthorization: [String:String] {
 		guard cachedHttpAuthorization == nil else {
@@ -290,56 +290,56 @@ public class WebRequest {
 		return ret
 	}
 	/// Provides access to the CONTENT_LENGTH parameter.
-	public var contentLength: Int? { get { return get("CONTENT_LENGTH") } set { set("CONTENT_LENGTH", value: newValue) } }
+	public var contentLength: Int? { get { return get(named: "CONTENT_LENGTH") } set { set(named: "CONTENT_LENGTH", value: newValue) } }
 	/// Provides access to the CONTENT_TYPE parameter.
-	public var contentType: String? { get { return get("CONTENT_TYPE") } set { set("CONTENT_TYPE", value: newValue) } }
+	public var contentType: String? { get { return get(named: "CONTENT_TYPE") } set { set(named: "CONTENT_TYPE", value: newValue) } }
 	/// Provides access to the PATH parameter.
-	public var path: String? { get { return get("PATH") } set { set("PATH", value: newValue) } }
+    public var path: String? { get { return get(named: "PATH") } set { set(named: "PATH", value: newValue) } }
 	/// Provides access to the PATH_TRANSLATED parameter.
-	public var pathTranslated: String? { get { return get("PATH_TRANSLATED") } set { set("PATH_TRANSLATED", value: newValue) } }
+	public var pathTranslated: String? { get { return get(named: "PATH_TRANSLATED") } set { set(named: "PATH_TRANSLATED", value: newValue) } }
 	/// Provides access to the QUERY_STRING parameter.
-	public var queryString: String? { get { return get("QUERY_STRING") } set { set("QUERY_STRING", value: newValue) } }
+	public var queryString: String? { get { return get(named: "QUERY_STRING") } set { set(named: "QUERY_STRING", value: newValue) } }
 	/// Provides access to the REMOTE_ADDR parameter.
-	public var remoteAddr: String? { get { return get("REMOTE_ADDR") } set { set("REMOTE_ADDR", value: newValue) } }
+	public var remoteAddr: String? { get { return get(named: "REMOTE_ADDR") } set { set(named: "REMOTE_ADDR", value: newValue) } }
 	/// Provides access to the REMOTE_PORT parameter.
-	public var remotePort: Int? { get { return get("REMOTE_PORT") } set { set("REMOTE_PORT", value: newValue) } }
+	public var remotePort: Int? { get { return get(named: "REMOTE_PORT") } set { set(named: "REMOTE_PORT", value: newValue) } }
 	/// Provides access to the REQUEST_METHOD parameter.
-	public var requestMethod: String? { get { return get("REQUEST_METHOD") } set { set("REQUEST_METHOD", value: newValue) } }
+	public var requestMethod: String? { get { return get(named: "REQUEST_METHOD") } set { set(named: "REQUEST_METHOD", value: newValue) } }
 	/// Provides access to the REQUEST_URI parameter.
-	public var requestURI: String? { get { return get("REQUEST_URI") } set { set("REQUEST_URI", value: newValue) } }
+	public var requestURI: String? { get { return get(named: "REQUEST_URI") } set { set(named: "REQUEST_URI", value: newValue) } }
 	/// Provides access to the SCRIPT_FILENAME parameter.
-	public var scriptFilename: String? { get { return get("SCRIPT_FILENAME") } set { set("SCRIPT_FILENAME", value: newValue) } }
+	public var scriptFilename: String? { get { return get(named: "SCRIPT_FILENAME") } set { set(named: "SCRIPT_FILENAME", value: newValue) } }
 	/// Provides access to the SCRIPT_NAME parameter.
-	public var scriptName: String? { get { return get("SCRIPT_NAME") } set { set("SCRIPT_NAME", value: newValue) } }
+	public var scriptName: String? { get { return get(named: "SCRIPT_NAME") } set { set(named: "SCRIPT_NAME", value: newValue) } }
 	/// Provides access to the SCRIPT_URI parameter.
-	public var scriptURI: String? { get { return get("SCRIPT_URI") } set { set("SCRIPT_URI", value: newValue) } }
+	public var scriptURI: String? { get { return get(named: "SCRIPT_URI") } set { set(named: "SCRIPT_URI", value: newValue) } }
 	/// Provides access to the SCRIPT_URL parameter.
-	public var scriptURL: String? { get { return get("SCRIPT_URL") } set { set("SCRIPT_URL", value: newValue) } }
+	public var scriptURL: String? { get { return get(named: "SCRIPT_URL") } set { set(named: "SCRIPT_URL", value: newValue) } }
 	/// Provides access to the SERVER_ADDR parameter.
-	public var serverAddr: String? { get { return get("SERVER_ADDR") } set { set("SERVER_ADDR", value: newValue) } }
+	public var serverAddr: String? { get { return get(named: "SERVER_ADDR") } set { set(named: "SERVER_ADDR", value: newValue) } }
 	/// Provides access to the SERVER_ADMIN parameter.
-	public var serverAdmin: String? { get { return get("SERVER_ADMIN") } set { set("SERVER_ADMIN", value: newValue) } }
+	public var serverAdmin: String? { get { return get(named: "SERVER_ADMIN") } set { set(named: "SERVER_ADMIN", value: newValue) } }
 	/// Provides access to the SERVER_NAME parameter.
-	public var serverName: String? { get { return get("SERVER_NAME") } set { set("SERVER_NAME", value: newValue) } }
+	public var serverName: String? { get { return get(named: "SERVER_NAME") } set { set(named: "SERVER_NAME", value: newValue) } }
 	/// Provides access to the SERVER_PORT parameter.
-	public var serverPort: Int? { get { return get("SERVER_PORT") } set { set("SERVER_PORT", value: newValue) } }
+	public var serverPort: Int? { get { return get(named: "SERVER_PORT") } set { set(named: "SERVER_PORT", value: newValue) } }
 	/// Provides access to the SERVER_PROTOCOL parameter.
-	public var serverProtocol: String? { get { return get("SERVER_PROTOCOL") } set { set("SERVER_PROTOCOL", value: newValue) } }
+	public var serverProtocol: String? { get { return get(named: "SERVER_PROTOCOL") } set { set(named: "SERVER_PROTOCOL", value: newValue) } }
 	/// Provides access to the SERVER_SIGNATURE parameter.
-	public var serverSignature: String? { get { return get("SERVER_SIGNATURE") } set { set("SERVER_SIGNATURE", value: newValue) } }
+	public var serverSignature: String? { get { return get(named: "SERVER_SIGNATURE") } set { set(named: "SERVER_SIGNATURE", value: newValue) } }
 	/// Provides access to the SERVER_SOFTWARE parameter.
-	public var serverSoftware: String? { get { return get("SERVER_SOFTWARE") } set { set("SERVER_SOFTWARE", value: newValue) } }
+	public var serverSoftware: String? { get { return get(named: "SERVER_SOFTWARE") } set { set(named: "SERVER_SOFTWARE", value: newValue) } }
 	/// Provides access to the PATH_INFO parameter if it exists or else the SCRIPT_NAME parameter.
-	public var pathInfo: String? { get { return get("PATH_INFO") ?? get("SCRIPT_NAME") } set { set("PATH_INFO", value: newValue) } }
+	public var pathInfo: String? { get { return get(named: "PATH_INFO") ?? get(named: "SCRIPT_NAME") } set { set(named: "PATH_INFO", value: newValue) } }
 	/// Provides access to the GATEWAY_INTERFACE parameter.
-	public var gatewayInterface: String? { get { return get("GATEWAY_INTERFACE") } set { set("GATEWAY_INTERFACE", value: newValue) } }
+	public var gatewayInterface: String? { get { return get(named: "GATEWAY_INTERFACE") } set { set(named: "GATEWAY_INTERFACE", value: newValue) } }
 	/// Returns true if the request was encrypted over HTTPS.
 	public var isHttps: Bool {
 		get {
-			return "on" == get("HTTPS")
+			return "on" == get(named: "HTTPS")
 		}
 		set {
-			set("HTTPS", value: newValue ? "on" : nil)
+			set(named: "HTTPS", value: newValue ? "on" : nil)
 		}
 	}
 	/// Returns the indicated HTTP header.
@@ -354,7 +354,7 @@ public class WebRequest {
 	}
 	
 	private func extractField(from: String, named: String) -> String? {
-		guard let range = from.rangeOf(named + "=") else {
+        guard let range = from.range(of: named + "=") else {
 			return nil
 		}
 		

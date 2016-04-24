@@ -189,7 +189,7 @@ public class NetNamedPipe : NetTCP {
 				try ThrowNetworkError()
 			}
 
-			NetEvent.add(fd.fd, what: .Write, timeoutSeconds: timeoutSeconds) {
+			NetEvent.add(socket: fd.fd, what: .Write, timeoutSeconds: timeoutSeconds) {
 				fd, w in
 			
 				if case .Timer = w {
@@ -256,11 +256,11 @@ public class NetNamedPipe : NetTCP {
 			callBack(true)
 		} else if res == -1 && errno == EAGAIN {
 
-			NetEvent.add(self.fd.fd, what: .Write, timeoutSeconds: NetEvent.noTimeout) { [weak self]
+			NetEvent.add(socket: self.fd.fd, what: .Write, timeoutSeconds: NetEvent.noTimeout) { [weak self]
 				fd, w in
 			
 				do {
-					try self?.sendFd(fd, callBack: callBack)
+					try self?.sendFd(fd: fd, callBack: callBack)
 				} catch {
 					callBack(false)
 				}
@@ -318,11 +318,11 @@ public class NetNamedPipe : NetTCP {
 			callBack(receivedInt)
 		} else if res == -1 && errno == EAGAIN {
 
-			NetEvent.add(self.fd.fd, what: .Read, timeoutSeconds: NetEvent.noTimeout) { [weak self]
+			NetEvent.add(socket: self.fd.fd, what: .Read, timeoutSeconds: NetEvent.noTimeout) { [weak self]
 				fd, w in
 			
 				do {
-					try self?.receiveFd(callBack)
+					try self?.receiveFd(callBack: callBack)
 				} catch {
 					callBack(invalidSocket)
 				}
@@ -339,7 +339,7 @@ public class NetNamedPipe : NetTCP {
 	/// - parameter callBack: The callback to call when the send completes. The parameter passed will be `true` if the send completed without error.
 	/// - throws: `PerfectError.NetworkError`
 	public func sendFile(file: File, callBack: (Bool) -> ()) throws {
-		try self.sendFd(Int32(file.fd), callBack: callBack)
+		try self.sendFd(fd: Int32(file.fd), callBack: callBack)
 	}
 
 	/// Send the existing & opened `NetTCP`'s descriptor over the connection to the recipient
@@ -347,7 +347,7 @@ public class NetNamedPipe : NetTCP {
 	/// - parameter callBack: The callback to call when the send completes. The parameter passed will be `true` if the send completed without error.
 	/// - throws: `PerfectError.NetworkError`
 	public func sendFile(file: NetTCP, callBack: (Bool) -> ()) throws {
-		try self.sendFd(file.fd.fd, callBack: callBack)
+		try self.sendFd(fd: file.fd.fd, callBack: callBack)
 	}
 
 	/// Receive an existing opened `File` descriptor from the sender

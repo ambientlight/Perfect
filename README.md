@@ -38,7 +38,7 @@ Perfect is built on its own high performance completely asynchronous networking 
 
 The database connectors are all stand-alone and can be used outside of the Perfect framework and server.
 
-Note that we are still making some tweaks to this layout and are currently ensuring that everything builds properly on Linux and OS X using SPM and Xcode. This new code **requires** a Swift 3.0 toolchain and is currently being built against the *March 24, 2016* snapshot. It will **not** compile with Swift 2.2.
+Note that we are still making some tweaks to this layout and are currently ensuring that everything builds properly on Linux and OS X using SPM and Xcode. This new code **requires** a Swift 3.0 toolchain and is currently being built against the *April 12, 2016* snapshot. It will **not** compile with Swift 2.2.
 
 (2016-04-05) We are **refactoring** the Perfect project repository with the ultimate goal of supporting the Swift Package Manager. The various modules, such as the PerfectLib, server, database connectors and examples pack are being split off into their own repositories. This change will also include some API streamlining and fewer 3rd party dependencies resulting in easier installation and deployment. Once this task has completed we will release as v1.1 and continue from there. We hope to have these changes solidified by the end of the week and we appreciate all the feedback we've received along the way. 
 

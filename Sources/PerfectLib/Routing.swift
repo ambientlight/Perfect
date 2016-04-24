@@ -45,11 +45,11 @@ public struct RouteMap: CustomStringConvertible {
 			
 			let method = webResponse.request.requestMethod!.uppercased()
 			if let root = self.methodRoots[method] {
-				if let handler = root.findHandler("", generator: g, webResponse: webResponse) {
+				if let handler = root.findHandler(currentComponent: "", generator: g, webResponse: webResponse) {
 					return handler
 				}
 			}
-			return self.root.findHandler("", generator: g, webResponse: webResponse)
+			return self.root.findHandler(currentComponent: "", generator: g, webResponse: webResponse)
 		}
 	}
 	
@@ -60,7 +60,7 @@ public struct RouteMap: CustomStringConvertible {
 			return nil // Swift does not currently allow set-only subscripts
 		}
 		set {
-			self.root.addPathSegments(path.lowercased().pathComponents.makeIterator(), h: newValue!)
+			self.root.addPathSegments(g: path.lowercased().pathComponents.makeIterator(), h: newValue!)
 		}
 	}
 	
@@ -86,11 +86,11 @@ public struct RouteMap: CustomStringConvertible {
 		set {
 			let uppered = method.uppercased()
 			if let root = self.methodRoots[uppered] {
-				root.addPathSegments(path.lowercased().pathComponents.makeIterator(), h: newValue!)
+				root.addPathSegments(g: path.lowercased().pathComponents.makeIterator(), h: newValue!)
 			} else {
 				let root = RouteNode()
 				self.methodRoots[uppered] = root
-				root.addPathSegments(path.lowercased().pathComponents.makeIterator(), h: newValue!)
+				root.addPathSegments(g: path.lowercased().pathComponents.makeIterator(), h: newValue!)
 			}
 		}
 	}
@@ -144,8 +144,8 @@ public class Routing {
 		if let handler = Routing.Routes[pathInfo, response] {
 			handler(request, response)
 		} else {
-			response.setStatus(404, message: "NOT FOUND")
-			response.appendBodyString("The file \(pathInfo) was not found.")
+			response.setStatus(code: 404, message: "NOT FOUND")
+			response.appendBodyString(string: "The file \(pathInfo) was not found.")
 			response.requestCompleted()
 		}
 	}
@@ -157,7 +157,7 @@ class RouteNode: CustomStringConvertible {
 	typealias ComponentGenerator = IndexingIterator<[String]>
 	
 	var description: String {
-		return self.descriptionTabbed(0)
+		return self.descriptionTabbed(tabCount: 0)
 	}
 	
 	private func putTabs(count: Int) -> String {
@@ -171,13 +171,13 @@ class RouteNode: CustomStringConvertible {
 	func descriptionTabbedInner(tabCount: Int) -> String {
 		var s = ""
 		for (_, node) in self.subNodes {
-			s.append("\(self.putTabs(tabCount))\(node.descriptionTabbed(tabCount+1))")
+			s.append("\(self.putTabs(count: tabCount))\(node.descriptionTabbed(tabCount: tabCount+1))")
 		}
 		for node in self.variables {
-			s.append("\(self.putTabs(tabCount))\(node.descriptionTabbed(tabCount+1))")
+			s.append("\(self.putTabs(count: tabCount))\(node.descriptionTabbed(tabCount: tabCount+1))")
 		}
 		if let node = self.wildCard {
-			s.append("\(self.putTabs(tabCount))\(node.descriptionTabbed(tabCount+1))")
+			s.append("\(self.putTabs(count: tabCount))\(node.descriptionTabbed(tabCount: tabCount+1))")
 		}
 		return s
 	}
@@ -187,7 +187,7 @@ class RouteNode: CustomStringConvertible {
 		if let _ = self.handler {
 			s.append("/+h\n")
 		}
-		s.append(self.descriptionTabbedInner(tabCount))
+		s.append(self.descriptionTabbedInner(tabCount: tabCount))
 		return s
 	}
 	
@@ -202,22 +202,22 @@ class RouteNode: CustomStringConvertible {
 			
 			// variables
 			for node in self.variables {
-				if let h = node.findHandler(p, generator: m, webResponse: webResponse) {
-					return self.successfulRoute(currentComponent, handler: node.successfulRoute(p, handler: h, webResponse: webResponse), webResponse: webResponse)
+				if let h = node.findHandler(currentComponent: p, generator: m, webResponse: webResponse) {
+					return self.successfulRoute(currentComponent: currentComponent, handler: node.successfulRoute(currentComponent: p, handler: h, webResponse: webResponse), webResponse: webResponse)
 				}
 			}
 			
 			// paths
 			if let node = self.subNodes[p] {
-				if let h = node.findHandler(p, generator: m, webResponse: webResponse) {
-					return self.successfulRoute(currentComponent, handler: node.successfulRoute(p, handler: h, webResponse: webResponse), webResponse: webResponse)
+				if let h = node.findHandler(currentComponent: p, generator: m, webResponse: webResponse) {
+					return self.successfulRoute(currentComponent: currentComponent, handler: node.successfulRoute(currentComponent: p, handler: h, webResponse: webResponse), webResponse: webResponse)
 				}
 			}
 			
 			// wildcards
 			if let node = self.wildCard {
-				if let h = node.findHandler(p, generator: m, webResponse: webResponse) {
-					return self.successfulRoute(currentComponent, handler: node.successfulRoute(p, handler: h, webResponse: webResponse), webResponse: webResponse)
+				if let h = node.findHandler(currentComponent: p, generator: m, webResponse: webResponse) {
+					return self.successfulRoute(currentComponent: currentComponent, handler: node.successfulRoute(currentComponent: p, handler: h, webResponse: webResponse), webResponse: webResponse)
 				}
 			}
 			
@@ -228,8 +228,8 @@ class RouteNode: CustomStringConvertible {
 		} else {
 			// wildcards
 			if let node = self.wildCard {
-				if let h = node.findHandler("", generator: m, webResponse: webResponse) {
-					return self.successfulRoute(currentComponent, handler: node.successfulRoute("", handler: h, webResponse: webResponse), webResponse: webResponse)
+				if let h = node.findHandler(currentComponent: "", generator: m, webResponse: webResponse) {
+					return self.successfulRoute(currentComponent: currentComponent, handler: node.successfulRoute(currentComponent: "", handler: h, webResponse: webResponse), webResponse: webResponse)
 				}
 			}
 		}
@@ -244,9 +244,9 @@ class RouteNode: CustomStringConvertible {
 		var m = g
 		if let p = m.next() {
 			if p == "/" {
-				self.addPathSegments(m, h: h)
+				self.addPathSegments(g: m, h: h)
 			} else {
-				self.addPathSegment(p, g: m, h: h)
+				self.addPathSegment(component: p, g: m, h: h)
 			}
 		} else {
 			self.handler = h
@@ -254,8 +254,8 @@ class RouteNode: CustomStringConvertible {
 	}
 	
 	private func addPathSegment(component: String, g: ComponentGenerator, h: RouteMap.RequestHandler) {
-		if let node = self.nodeForComponent(component) {
-			node.addPathSegments(g, h: h)
+		if let node = self.nodeForComponent(component: component) {
+			node.addPathSegments(g: g, h: h)
 		}
 	}
 	
@@ -270,7 +270,7 @@ class RouteNode: CustomStringConvertible {
 			return self.wildCard
 		}
 		if component.characters.count >= 3 && component[component.startIndex] == "{" && component[component.endIndex.predecessor()] == "}" {
-			let node = RouteVariable(name: component.substringWith(component.startIndex.successor()..<component.endIndex.predecessor()))
+			let node = RouteVariable(name: component.substring(with:)(with: component.startIndex.successor()..<component.endIndex.predecessor()))
 			self.variables.append(node)
 			return node
 		}
@@ -299,7 +299,7 @@ class RoutePath: RouteNode {
 		} else {
 			s.append("\n")
 		}
-		s.append(self.descriptionTabbedInner(tabCount))
+		s.append(self.descriptionTabbedInner(tabCount: tabCount))
 		return s
 	}
 	
@@ -317,7 +317,7 @@ class RouteWildCard: RouteNode {
 		} else {
 			s.append("\n")
 		}
-		s.append(self.descriptionTabbedInner(tabCount))
+		s.append(self.descriptionTabbedInner(tabCount: tabCount))
 		return s
 	}
 	
@@ -338,7 +338,7 @@ class RouteVariable: RouteNode {
 		} else {
 			s.append("\n")
 		}
-		s.append(self.descriptionTabbedInner(tabCount))
+		s.append(self.descriptionTabbedInner(tabCount: tabCount))
 		return s
 	}
 	

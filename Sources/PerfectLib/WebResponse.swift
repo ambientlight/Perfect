@@ -79,7 +79,7 @@ public class WebResponse {
 
 	/// Set the response status code and message. For example, 200, "OK".
 	public func setStatus(code: Int, message: String) {
-		self.connection.setStatus(code, msg: message)
+		self.connection.setStatus(code: code, msg: message)
 	}
 
 	/// Get the response status code and message.
@@ -112,8 +112,8 @@ public class WebResponse {
 
 	/// Perform a 302 redirect to the given url
 	public func redirectTo(url: String) {
-		self.setStatus(302, message: "FOUND")
-		self.replaceHeader("Location", value: url)
+		self.setStatus(code: 302, message: "FOUND")
+		self.replaceHeader(name: "Location", value: url)
 	}
 
 	/// Add an outgoing HTTP header
@@ -128,13 +128,13 @@ public class WebResponse {
 				self.headersArray.remove(at: i)
 			}
 		}
-		self.addHeader(name, value: value)
+		self.addHeader(name: name, value: value)
 	}
 
 	// directly called by the WebSockets impl
 	func sendResponse() {
 		for (key, value) in headersArray {
-			connection.writeHeaderLine(key + ": " + value)
+			connection.writeHeaderLine(h: key + ": " + value)
 		}
 		// cookies
 		if self.cookiesArray.count > 0 {
@@ -145,7 +145,7 @@ public class WebResponse {
 				cookieLine.append("=")
 				cookieLine.append(cookie.value!.stringByEncodingURL)
 				if cookie.expiresIn != 0.0 {
-					let formattedDate = try! formatDate(now + secondsToICUDate(Int(cookie.expiresIn)*60),
+					let formattedDate = try! formatDate(date: now + secondsToICUDate(seconds: Int(cookie.expiresIn)*60),
 						format: "%a, %d-%b-%Y %T GMT", timezone: "GMT")
 					cookieLine.append(";expires=" + formattedDate)
 				}
@@ -166,36 +166,36 @@ public class WebResponse {
 					}
 				}
                 // etc...
-                connection.writeHeaderLine(cookieLine)
+                connection.writeHeaderLine(h: cookieLine)
 			}
 		}
-		connection.writeHeaderLine("Content-Length: \(bodyData.count)")
+		connection.writeHeaderLine(h: "Content-Length: \(bodyData.count)")
 
-		connection.writeBodyBytes(bodyData)
+		connection.writeBodyBytes(b: bodyData)
 	}
 
 	private func doMainBody() {
 
 		do {
 
-			return try include(request.pathInfo ?? "error", local: false)
+			return try include(path: request.pathInfo ?? "error", local: false)
 
 		} catch PerfectError.FileError(let code, let msg) {
 
 			print("File exception \(code) \(msg)")
-			self.setStatus(code == 404 ? Int(code) : 500, message: msg)
+			self.setStatus(code: code == 404 ? Int(code) : 500, message: msg)
 			self.bodyData = [UInt8]("File exception \(code) \(msg)".utf8)
 
 		} catch MustacheError.SyntaxError(let msg) {
 
 			print("MustacheError.SyntaxError \(msg)")
-			self.setStatus(500, message: msg)
+			self.setStatus(code: 500, message: msg)
 			self.bodyData = [UInt8]("Mustache syntax error \(msg)".utf8)
 
 		} catch MustacheError.EvaluationError(let msg) {
 
 			print("MustacheError.EvaluationError exception \(msg)")
-			self.setStatus(500, message: msg)
+			self.setStatus(code: 500, message: msg)
 			self.bodyData = [UInt8]("Mustache evaluation error \(msg)".utf8)
 
 		} catch let e {
@@ -205,11 +205,11 @@ public class WebResponse {
 	}
 
 	func includeVirtual(path: String) throws {
-		Routing.handleRequest(self.request, response: self)
+		Routing.handleRequest(request: self.request, response: self)
 	}
 
 	func include(path: String, local: Bool) throws {
-		return try self.includeVirtual(path)
+		return try self.includeVirtual(path: path)
 	}
 
 	private func makeNonRelative(path: String, local: Bool = false) -> String {

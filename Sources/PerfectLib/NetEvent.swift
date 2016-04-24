@@ -106,14 +106,14 @@ class NetEvent {
 		self.kq = kqueue()
 #endif
 		guard self.kq != -1 else {
-			Log.terminal("Unable to initialize event listener.")
+			Log.terminal(msg: "Unable to initialize event listener.")
 		}
 		self.evlist = UnsafeMutablePointer<event>(allocatingCapacity: self.numEvents)
 		memset(self.evlist, 0, sizeof(event.self) * self.numEvents)
 	}
 
 	static func initialize() {
-		Threading.once(&NetEvent.initOnce) {
+		Threading.once(threadOnce: &NetEvent.initOnce) {
 			NetEvent.staticEvent = NetEvent()
 			NetEvent.staticEvent.runLoop()
 		}
@@ -121,7 +121,7 @@ class NetEvent {
 
 	private func runLoop() {
 
-		let q = Threading.getQueue("NetEvent", type: .Serial)
+		let q = Threading.getQueue(name: "NetEvent", type: .Serial)
 		q.dispatch {
 			while true {
 //				print("event wait")
@@ -131,7 +131,7 @@ class NetEvent {
 				let nev = Int(kevent(self.kq, nil, 0, self.evlist, Int32(self.numEvents), nil))
 #endif
 				guard nev >= 0 else {
-					Log.terminal("event returned less than zero \(nev).")
+					Log.terminal(msg: "event returned less than zero \(nev).")
 				}
 				// process results
 				self.lock.doWithLock {

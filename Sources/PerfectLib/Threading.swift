@@ -27,7 +27,7 @@ public struct Threading {
 
 	/// The key type used for `Threading.once`.
 	public typealias ThreadOnce = pthread_once_t
-	typealias ThreadFunction = @convention(c) (UnsafeMutablePointer<Void>) -> UnsafeMutablePointer<Void>
+	typealias ThreadFunction = @convention(c) (UnsafeMutablePointer<Void>!) -> UnsafeMutablePointer<Void>!
 
 	class IsThisRequired {
 		let closure: ThreadClosure

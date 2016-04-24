@@ -162,12 +162,12 @@ public class HTTP2WebRequest: WebRequest {
 public class HTTP2WebResponse: WebResponse, HeaderListener {
 
 	public func addHeader(name: [UInt8], value: [UInt8], sensitive: Bool) {
-		let n = UTF8Encoding.encode(name)
-		let v = UTF8Encoding.encode(value)
+        let n = UTF8Encoding.encode(bytes: name)
+        let v = UTF8Encoding.encode(bytes: value)
 
 		switch n {
 		case ":status":
-			self.setStatus(Int(v) ?? -1, message: "")
+			self.setStatus(code: Int(v) ?? -1, message: "")
 		default:
 			headersArray.append((n, v))
 		}
@@ -210,7 +210,7 @@ public class HTTP2Client {
 
 		self.frameReadEvent.doWithLock {
 			if self.frameQueue.count == 0 {
-				self.frameReadEvent.wait(Int(timeoutSeconds * 1000.0))
+				self.frameReadEvent.wait(waitMillis: Int(timeoutSeconds * 1000.0))
 			}
 			if self.frameQueue.count > 0 {
 				frame = self.frameQueue.removeFirst()
@@ -225,7 +225,7 @@ public class HTTP2Client {
 
 		self.frameReadEvent.doWithLock {
 			if self.frameQueue.count == 0 {
-				self.frameReadEvent.wait(Int(timeoutSeconds * 1000.0))
+				self.frameReadEvent.wait(waitMillis: Int(timeoutSeconds * 1000.0))
 			}
 			if self.frameQueue.count > 0 {
 				for i in 0..<self.frameQueue.count {
@@ -270,7 +270,7 @@ public class HTTP2Client {
 
 	func readOneFrame() {
 		Threading.dispatchBlock {
-			self.readHTTP2Frame(-1) { [weak self]
+			self.readHTTP2Frame(timeout: -1) { [weak self]
 				f in
 
 				if let frame = f {
@@ -289,10 +289,10 @@ public class HTTP2Client {
 
 							if !endStream { // ACK settings receipt
 								if let payload = frame.payload {
-									self?.processSettingsPayload(Bytes(existingBytes: payload))
+									self?.processSettingsPayload(b: Bytes(existingBytes: payload))
 								}
 								let response = HTTP2Frame(length: 0, type: HTTP2_SETTINGS, flags: HTTP2_SETTINGS_ACK, streamId: 0, payload: nil)
-								self?.writeHTTP2Frame(response) {
+								self?.writeHTTP2Frame(frame: response) {
 									b in
 
 									self?.readOneFrame()
@@ -307,10 +307,10 @@ public class HTTP2Client {
 
 							if !endStream { // ACK ping receipt
 								if let payload = frame.payload {
-									self?.processSettingsPayload(Bytes(existingBytes: payload))
+									self?.processSettingsPayload(b: Bytes(existingBytes: payload))
 								}
 								let response = HTTP2Frame(length: frame.length, type: HTTP2_PING, flags: HTTP2_PING_ACK, streamId: 0, payload: frame.payload)
-								self?.writeHTTP2Frame(response) {
+								self?.writeHTTP2Frame(frame: response) {
 									b in
 
 									self?.readOneFrame()
@@ -388,7 +388,7 @@ public class HTTP2Client {
 		self.timeoutSeconds = timeoutSeconds
 
 		do {
-			try net.connect(host, port: port, timeoutSeconds: timeoutSeconds) {
+			try net.connect(address: host, port: port, timeoutSeconds: timeoutSeconds) {
 				n in
 
 				if let net = n as? NetTCPSSL {
@@ -398,13 +398,13 @@ public class HTTP2Client {
 							b in
 
 							if b {
-								self.completeConnect(callback)
+								self.completeConnect(callback: callback)
 							} else {
 								callback(false)
 							}
 						}
 					} else {
-						self.completeConnect(callback)
+						self.completeConnect(callback: callback)
 					}
 
 				} else {
@@ -424,7 +424,7 @@ public class HTTP2Client {
 		let response = HTTP2WebResponse(request.connection, request: request)
 		var streamOpen = true
 		while streamOpen {
-			let f = self.dequeueFrame(self.timeoutSeconds, streamId: streamId)
+			let f = self.dequeueFrame(timeoutSeconds: self.timeoutSeconds, streamId: streamId)
 
 			if let frame = f {
 
@@ -435,14 +435,14 @@ public class HTTP2Client {
 					let errorCode = ntohl(bytes.export32Bits())
 					var message = ""
 					if bytes.availableExportBytes > 0 {
-						message = UTF8Encoding.encode(bytes.exportBytes(bytes.availableExportBytes))
+                        message = UTF8Encoding.encode(bytes: bytes.exportBytes(count: bytes.availableExportBytes))
 					}
 
 					let bytes2 = Bytes(initialSize: 8)
-					bytes2.import32Bits(htonl(streamId))
-					bytes2.import32Bits(0)
+					bytes2.import32Bits(int: htonl(streamId))
+					bytes2.import32Bits(int: 0)
 					let frame2 = HTTP2Frame(length: 8, type: HTTP2_GOAWAY, flags: 0, streamId: streamId, payload: bytes2.data)
-					self.writeHTTP2Frame(frame2) {
+					self.writeHTTP2Frame(frame: frame2) {
 						b in
 
 						self.close()
@@ -467,7 +467,7 @@ public class HTTP2Client {
 						//											streamDep = bytes.export32Bits()
 						//											weight = bytes.export8Bits()
 						//										}
-						self.decodeHeaders(bytes, endPosition: ba.count - Int(padLength), listener: response)
+						self.decodeHeaders(from: bytes, endPosition: ba.count - Int(padLength), listener: response)
 					}
 					streamOpen = (frame.flags & HTTP2_END_STREAM) == 0
 					if !streamOpen {
@@ -506,23 +506,23 @@ public class HTTP2Client {
 
 		do {
 
-			try encoder.encodeHeader(headerBytes, name: ":method", value: method ?? "GET")
-			try encoder.encodeHeader(headerBytes, name: ":scheme", value: scheme)
-			try encoder.encodeHeader(headerBytes, name: ":path", value: path ?? "/", sensitive: false, incrementalIndexing: false)
-			try encoder.encodeHeader(headerBytes, name: "host", value: self.host)
-			try encoder.encodeHeader(headerBytes, name: "content-length", value: "\(request.postBodyBytes.count)")
+            try encoder.encodeHeader(out: headerBytes, name: ":method", value: method ?? "GET")
+			try encoder.encodeHeader(out: headerBytes, name: ":scheme", value: scheme)
+			try encoder.encodeHeader(out: headerBytes, name: ":path", value: path ?? "/", sensitive: false, incrementalIndexing: false)
+			try encoder.encodeHeader(out: headerBytes, name: "host", value: self.host)
+			try encoder.encodeHeader(out: headerBytes, name: "content-length", value: "\(request.postBodyBytes.count)")
 
 			for (name, value) in request.headers {
 				let lowered  = name.lowercased()
 				var inc = true
 				// this is APNS specific in that Apple wants the apns-id and apns-expiration headers to be indexed on the first request but not indexed on subsequent requests
 				// !FIX! need to enable the caller to indicate policies such as this
-				let n = UTF8Encoding.decode(lowered)
-				let v = UTF8Encoding.decode(value)
+				let n = UTF8Encoding.decode(str: lowered)
+				let v = UTF8Encoding.decode(str: value)
 				if streamId > 1 { // at least the second request
 					inc = !(lowered == "apns-id" || lowered == "apns-expiration")
 				}
-				try encoder.encodeHeader(headerBytes, name: n, value: v, sensitive: false, incrementalIndexing: inc)
+                try encoder.encodeHeader(out: headerBytes, name: n, value: v, sensitive: false, incrementalIndexing: inc)
 			}
 
 		} catch {
@@ -531,7 +531,7 @@ public class HTTP2Client {
 		}
 		let hasData = request.postBodyBytes.count > 0
 		let frame = HTTP2Frame(length: UInt32(headerBytes.data.count), type: HTTP2_HEADERS, flags: HTTP2_END_HEADERS | (hasData ? 0 : HTTP2_END_STREAM), streamId: streamId, payload: headerBytes.data)
-		self.writeHTTP2Frame(frame) { [weak self]
+		self.writeHTTP2Frame(frame: frame) { [weak self]
 			b in
 
 			guard b else {
@@ -546,7 +546,7 @@ public class HTTP2Client {
 			if hasData {
 
 				let frame2 = HTTP2Frame(length: UInt32(request.postBodyBytes.count), type: HTTP2_DATA, flags: HTTP2_END_STREAM, streamId: streamId, payload: request.postBodyBytes)
-				s.writeHTTP2Frame(frame2) { [weak self]
+				s.writeHTTP2Frame(frame: frame2) { [weak self]
 					b in
 
 					guard let s = self else {
@@ -554,21 +554,21 @@ public class HTTP2Client {
 						return
 					}
 
-					s.awaitResponse(streamId, request: request, callback: callback)
+					s.awaitResponse(streamId: streamId, request: request, callback: callback)
 				}
 
 			} else {
-				s.awaitResponse(streamId, request: request, callback: callback)
+				s.awaitResponse(streamId: streamId, request: request, callback: callback)
 			}
 		}
 	}
 
 	func completeConnect(callback: (Bool) -> ()) {
-		net.writeString("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") {
+		net.writeString(s: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") {
 			wrote in
 
 			let settings = HTTP2Frame(length: 0, type: HTTP2_SETTINGS, flags: 0, streamId: 0, payload: nil)
-			self.writeHTTP2Frame(settings) { [weak self]
+			self.writeHTTP2Frame(frame: settings) { [weak self]
 				b in
 
 				if b {
@@ -599,15 +599,15 @@ public class HTTP2Client {
 
 	func readHTTP2Frame(timeout: Double, callback: (HTTP2Frame?) -> ()) {
 		let net = self.net
-		net.readBytesFully(9, timeoutSeconds: timeout) {
+		net.readBytesFully(count: 9, timeoutSeconds: timeout) {
 			bytes in
 
 			if let b = bytes {
 
-				var header = self.bytesToHeader(b)
+				var header = self.bytesToHeader(b: b)
 
 				if header.length > 0 {
-					net.readBytesFully(Int(header.length), timeoutSeconds: timeout) {
+					net.readBytesFully(count: Int(header.length), timeoutSeconds: timeout) {
 						bytes in
 
 						header.payload = bytes
@@ -627,12 +627,12 @@ public class HTTP2Client {
 	func writeHTTP2Frame(frame: HTTP2Frame, callback: (Bool) -> ()) {
 		if !net.fd.isValid {
 			callback(false)
-		} else if !net.writeBytesFully(frame.headerBytes()) {
+		} else if !net.writeBytesFully(bytes: frame.headerBytes()) {
 			callback(false)
 		} else {
 //			print("Wrote frame \(frame.typeStr) \(frame.flagsStr) \(frame.streamId)")
 			if let p = frame.payload {
-				callback(net.writeBytesFully(p))
+				callback(net.writeBytesFully(bytes: p))
 			} else {
 				callback(true)
 			}
@@ -643,10 +643,10 @@ public class HTTP2Client {
 		let b = Bytes()
 		let encoder = HPACKEncoder(maxCapacity: 4096)
 		for header in headers {
-			let n = UTF8Encoding.decode(header.0)
-			let v = UTF8Encoding.decode(header.1)
+			let n = UTF8Encoding.decode(str: header.0)
+			let v = UTF8Encoding.decode(str: header.1)
 			do {
-				try encoder.encodeHeader(b, name: n, value: v, sensitive: false)
+                try encoder.encodeHeader(out: b, name: n, value: v, sensitive: false)
 			} catch {
 				self.close()
 				break
@@ -658,7 +658,7 @@ public class HTTP2Client {
 	func decodeHeaders(from: Bytes, endPosition: Int, listener: HeaderListener) {
 		let decoder = HPACKDecoder()
 		do {
-			try decoder.decode(from, headerListener: listener)
+			try decoder.decode(input: from, headerListener: listener)
 		} catch {
 			self.close()
 		}

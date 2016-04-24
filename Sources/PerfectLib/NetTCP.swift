@@ -132,7 +132,7 @@ public class NetTCP : Closeable {
 		initSocket()
 		
 		var addr: sockaddr_in = sockaddr_in()
-		let res = makeAddress(&addr, host: address, port: port)
+		let res = makeAddress(sin: &addr, host: address, port: port)
 		guard res != -1 else {
 			try ThrowNetworkError()
 		}
@@ -201,18 +201,20 @@ public class NetTCP : Closeable {
 	}
 	
 	private func makeAddress(sin: inout sockaddr_in, host: String, port: UInt16) -> Int {
-		let theHost: UnsafeMutablePointer<hostent> = gethostbyname(host)
+		let theHost: UnsafeMutablePointer<hostent>? = gethostbyname(host)
+        
 		if theHost == nil {
 			if inet_addr(host) == INADDR_NONE {
 				endhostent()
 				return -1
 			}
 		}
+        
 		let bPort = port.bigEndian
 		sin.sin_port = in_port_t(bPort)
 		sin.sin_family = sa_family_t(AF_INET)
-		if theHost != nil {
-			sin.sin_addr.s_addr = UnsafeMutablePointer<UInt32>(theHost.pointee.h_addr_list.pointee).pointee
+		if let theHostUnwrapped = theHost {
+			sin.sin_addr.s_addr = UnsafeMutablePointer<UInt32>(theHostUnwrapped.pointee.h_addr_list.pointee!).pointee
 		} else {
 			sin.sin_addr.s_addr = inet_addr(host)
 		}
@@ -230,13 +232,13 @@ public class NetTCP : Closeable {
 	}
 	
 	func readBytesFully(into: ReferenceBuffer, read: Int, remaining: Int, timeoutSeconds: Double, completion: ([UInt8]?) -> ()) {
-		let readCount = recv(into.b + read, count: remaining)
+		let readCount = recv(buf: into.b + read, count: remaining)
 		if readCount == 0 {
 			completion(nil) // disconnect
-		} else if self.isEAgain(readCount) {
+		} else if self.isEAgain(err: readCount) {
 			
 			// no data available. wait
-			self.readBytesFullyIncomplete(into, read: read, remaining: remaining, timeoutSeconds: timeoutSeconds, completion: completion)
+			self.readBytesFullyIncomplete(into: into, read: read, remaining: remaining, timeoutSeconds: timeoutSeconds, completion: completion)
 			
 		} else if readCount < 0 {
 			completion(nil) // networking or other error
@@ -244,20 +246,20 @@ public class NetTCP : Closeable {
 			
 			// got some data
 			if remaining - readCount == 0 { // done
-				completion(completeArray(into, count: read + readCount))
+				completion(completeArray(from: into, count: read + readCount))
 			} else { // try again for more
-				readBytesFully(into, read: read + readCount, remaining: remaining - readCount, timeoutSeconds: timeoutSeconds, completion: completion)
+				readBytesFully(into: into, read: read + readCount, remaining: remaining - readCount, timeoutSeconds: timeoutSeconds, completion: completion)
 			}
 		}
 	}
 	
 	func readBytesFullyIncomplete(into: ReferenceBuffer, read: Int, remaining: Int, timeoutSeconds: Double, completion: ([UInt8]?) -> ()) {
 		
-		NetEvent.add(fd.fd, what: .Read, timeoutSeconds: timeoutSeconds) { [weak self]
+		NetEvent.add(socket: fd.fd, what: .Read, timeoutSeconds: timeoutSeconds) { [weak self]
 			fd, w in
 			
 			if case .Read = w {
-				self?.readBytesFully(into, read: read, remaining: remaining, timeoutSeconds: timeoutSeconds, completion: completion)
+				self?.readBytesFully(into: into, read: read, remaining: remaining, timeoutSeconds: timeoutSeconds, completion: completion)
 			} else {
 				completion(nil) // timeout or error
 			}
@@ -271,7 +273,7 @@ public class NetTCP : Closeable {
 	public func readBytesFully(count: Int, timeoutSeconds: Double, completion: ([UInt8]?) -> ()) {
 
 		let ptr = ReferenceBuffer(size: count)
-		readBytesFully(ptr, read: 0, remaining: count, timeoutSeconds: timeoutSeconds, completion: completion)
+		readBytesFully(into: ptr, read: 0, remaining: count, timeoutSeconds: timeoutSeconds, completion: completion)
 	}
 	
 	/// Read up to the indicated number of bytes and deliver them on the provided callback.
@@ -280,15 +282,15 @@ public class NetTCP : Closeable {
 	public func readSomeBytes(count: Int, completion: ([UInt8]?) -> ()) {
 		
 		let ptr = ReferenceBuffer(size: count)
-		let readCount = recv(ptr.b, count: count)
+		let readCount = recv(buf: ptr.b, count: count)
 		if readCount == 0 {
 			completion(nil)
-		} else if self.isEAgain(readCount) {
+		} else if self.isEAgain(err: readCount) {
 			completion([UInt8]())
 		} else if readCount == -1 {
 			completion(nil)
 		} else {
-			completion(completeArray(ptr, count: readCount))
+			completion(completeArray(from: ptr, count: readCount))
 		}
 	}
 	
@@ -296,28 +298,28 @@ public class NetTCP : Closeable {
 	/// - parameter s: The string to write. The string will be written based on its UTF-8 encoding.
 	/// - parameter completion: The callback which will be called once the write has completed. The callback will be passed the number of bytes which were successfuly written, which may be zero.
 	public func write(s: String, completion: (Int) -> ()) {
-		writeBytes([UInt8](s.utf8), completion: completion)
+		writeBytes(bytes: [UInt8](s.utf8), completion: completion)
 	}
 	
 	/// Write the indicated bytes and call the callback with the number of bytes which were written.
 	/// - parameter bytes: The array of UInt8 to write.
 	/// - parameter completion: The callback which will be called once the write has completed. The callback will be passed the number of bytes which were successfuly written, which may be zero.
 	public func write(bytes: [UInt8], completion: (Int) -> ()) {
-		writeBytes(bytes, dataPosition: 0, length: bytes.count, completion: completion)
+        writeBytes(bytes: bytes, dataPosition: 0, length: bytes.count, completion: completion)
 	}
 	
 	/// Write the string and call the callback with the number of bytes which were written.
 	/// - parameter s: The string to write. The string will be written based on its UTF-8 encoding.
 	/// - parameter completion: The callback which will be called once the write has completed. The callback will be passed the number of bytes which were successfuly written, which may be zero.
 	public func writeString(s: String, completion: (Int) -> ()) {
-		writeBytes([UInt8](s.utf8), completion: completion)
+		writeBytes(bytes: [UInt8](s.utf8), completion: completion)
 	}
 	
 	/// Write the indicated bytes and call the callback with the number of bytes which were written.
 	/// - parameter bytes: The array of UInt8 to write.
 	/// - parameter completion: The callback which will be called once the write has completed. The callback will be passed the number of bytes which were successfuly written, which may be zero.
 	public func writeBytes(bytes: [UInt8], completion: (Int) -> ()) {
-		writeBytes(bytes, dataPosition: 0, length: bytes.count, completion: completion)
+        writeBytes(bytes: bytes, dataPosition: 0, length: bytes.count, completion: completion)
 	}
 	
 	/// Write the indicated bytes and return true if all data was sent.
@@ -330,7 +332,7 @@ public class NetTCP : Closeable {
 		var what: NetEvent.Filter = .None
 		
 		let waitFunc = {
-			NetEvent.add(self.fd.fd, what: .Write, timeoutSeconds: 0.0) {
+			NetEvent.add(socket: self.fd.fd, what: .Write, timeoutSeconds: 0.0) {
 				_, w in
 				what = w
 				s?.lock()
@@ -341,7 +343,7 @@ public class NetTCP : Closeable {
 		
 		while length > 0 {
 			
-			let sent = send(ptr.advanced(by: totalSent), count: length - totalSent)
+			let sent = send(buf: ptr.advanced(by: totalSent), count: length - totalSent)
 			if sent == length {
 				return true
 			}
@@ -351,7 +353,7 @@ public class NetTCP : Closeable {
 			}
 			
 			if sent == -1 {
-				if isEAgain(sent) { // flow
+				if isEAgain(err: sent) { // flow
 					s!.lock()
 					waitFunc()
 				} else { // error
@@ -386,18 +388,18 @@ public class NetTCP : Closeable {
 	public func writeBytes(bytes: [UInt8], dataPosition: Int, length: Int, completion: (Int) -> ()) {
 		
 		let ptr = UnsafeMutablePointer<UInt8>(bytes).advanced(by: dataPosition)
-		writeBytes(ptr, wrote: 0, length: length, completion: completion)
+        writeBytes(ptr: ptr, wrote: 0, length: length, completion: completion)
 	}
 	
 	func writeBytes(ptr: UnsafeMutablePointer<UInt8>, wrote: Int, length: Int, completion: (Int) -> ()) {
-		let sent = send(ptr, count: length)
-		if isEAgain(sent) {
-			writeBytesIncomplete(ptr, wrote: wrote, length: length, completion: completion)
+		let sent = send(buf: ptr, count: length)
+		if isEAgain(err: sent) {
+			writeBytesIncomplete(nptr: ptr, wrote: wrote, length: length, completion: completion)
 		} else if sent == -1 {
 			completion(sent)
 		} else if sent < length {
 			// flow control
-			writeBytesIncomplete(ptr.advanced(by: sent), wrote: wrote + sent, length: length - sent, completion: completion)
+			writeBytesIncomplete(nptr: ptr.advanced(by: sent), wrote: wrote + sent, length: length - sent, completion: completion)
 		} else {
 			completion(wrote + sent)
 		}
@@ -405,10 +407,10 @@ public class NetTCP : Closeable {
 	
 	func writeBytesIncomplete(nptr: UnsafeMutablePointer<UInt8>, wrote: Int, length: Int, completion: (Int) -> ()) {
 		
-		NetEvent.add(fd.fd, what: .Write, timeoutSeconds: 0.0) {
+		NetEvent.add(socket: fd.fd, what: .Write, timeoutSeconds: 0.0) {
 			fd, w in
 			
-			self.writeBytes(nptr, wrote: wrote, length: length, completion: completion)
+            self.writeBytes(ptr: nptr, wrote: wrote, length: length, completion: completion)
 		}
 	}
 	
@@ -423,7 +425,7 @@ public class NetTCP : Closeable {
 		initSocket()
 		
 		var addr: sockaddr_in = sockaddr_in()
-		let res = makeAddress(&addr, host: address, port: port)
+		let res = makeAddress(sin: &addr, host: address, port: port)
 		guard res != -1 else {
 			try ThrowNetworkError()
 		}
@@ -446,7 +448,7 @@ public class NetTCP : Closeable {
 			guard errno == EINPROGRESS else {
 				try ThrowNetworkError()
 			}
-			NetEvent.add(fd.fd, what: .Write, timeoutSeconds: timeoutSeconds) {
+			NetEvent.add(socket: fd.fd, what: .Write, timeoutSeconds: timeoutSeconds) {
 				fd, w in
 				if case .Timer = w {
 					callBack(nil)
@@ -468,21 +470,21 @@ public class NetTCP : Closeable {
 		let accRes = Darwin.accept(fd.fd, UnsafeMutablePointer<sockaddr>(nil), UnsafeMutablePointer<socklen_t>(nil))
 	#endif
 		if accRes != -1 {
-			let newTcp = self.makeFromFd(accRes)
+			let newTcp = self.makeFromFd(fd: accRes)
 			callBack(newTcp)
 		} else {
-			guard self.isEAgain(Int(accRes)) else {
+			guard self.isEAgain(err: Int(accRes)) else {
 				try ThrowNetworkError()
 			}
 			
-			NetEvent.add(fd.fd, what: .Read, timeoutSeconds: timeoutSeconds) {
+			NetEvent.add(socket: fd.fd, what: .Read, timeoutSeconds: timeoutSeconds) {
 				fd, w in
 			
 				if case .Timer = w {
 					callBack(nil)
 				} else {
 					do {
-						try self.accept(timeoutSeconds, callBack: callBack)
+						try self.accept(timeoutSeconds: timeoutSeconds, callBack: callBack)
 					} catch {
 						callBack(nil)
 					}
@@ -503,7 +505,7 @@ public class NetTCP : Closeable {
 	
 	private func waitAccept() {
 		
-		NetEvent.add(fd.fd, what: .Read, timeoutSeconds: 0.0) { [weak self]
+		NetEvent.add(socket: fd.fd, what: .Read, timeoutSeconds: 0.0) { [weak self]
 			_, _ in
 			
 			self?.semaphore!.lock()
@@ -528,9 +530,9 @@ public class NetTCP : Closeable {
 			let accRes = tryAccept()
 			if accRes != -1 {
 				Threading.dispatchBlock {
-					callBack(self.makeFromFd(accRes))
+					callBack(self.makeFromFd(fd: accRes))
 				}
-			} else if self.isEAgain(Int(accRes)) {
+			} else if self.isEAgain(err: Int(accRes)) {
 				self.semaphore!.lock()
 				waitAccept()
 				self.semaphore!.wait()

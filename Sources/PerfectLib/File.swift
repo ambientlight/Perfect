@@ -95,8 +95,8 @@ public class File : Closeable {
 			let buffer = UnsafeMutablePointer<Int8>(allocatingCapacity: 2048)
 			let res = readlink(internalPath, buffer, 2048)
 			if res != -1 {
-				let ary = completeArray(buffer, count: res)
-				let trailPath = UTF8Encoding.encode(ary)
+                let ary = completeArray(from: buffer, count: res)
+                let trailPath = UTF8Encoding.encode(bytes: ary)
 				if trailPath[trailPath.startIndex] != "/" && trailPath[trailPath.startIndex] != "." {
 					return internalPath.stringByDeletingLastPathComponent + "/" + trailPath
 				}
@@ -285,7 +285,7 @@ public class File : Closeable {
 			return destFile
 		}
 		if errno == EXDEV {
-			try self.copyTo(path, overWrite: overWrite)
+			try self.copyTo(path: path, overWrite: overWrite)
 			self.delete()
 			return destFile
 		}
@@ -311,22 +311,22 @@ public class File : Closeable {
 		if !wasOpen {
 			try openRead()
 		} else {
-			setMarker(0)
+			setMarker(to: 0)
 		}
 		defer {
 			if !wasOpen {
 				close()
 			} else {
-				setMarker(oldMarker)
+				setMarker(to: oldMarker)
 			}
 		}
 		
 		try destFile.openTruncate()
 		
-		var bytes = try self.readSomeBytes(fileCopyBufferSize)
+		var bytes = try self.readSomeBytes(count: fileCopyBufferSize)
 		while bytes.count > 0 {
-			try destFile.writeBytes(bytes)
-			bytes = try self.readSomeBytes(fileCopyBufferSize)
+			try destFile.writeBytes(bytes: bytes)
+			bytes = try self.readSomeBytes(count: fileCopyBufferSize)
 		}
 		
 		destFile.close()
@@ -407,7 +407,7 @@ public class File : Closeable {
 		if !isOpen() {
 			try openRead()
 		}
-		let bSize = min(count, self.sizeOr(count))
+		let bSize = min(count, self.sizeOr(value: count))
 		let ptr = UnsafeMutablePointer<UInt8>(allocatingCapacity: bSize)
 
 		let readCount = read(CInt(fd), ptr, bSize)
@@ -418,13 +418,13 @@ public class File : Closeable {
 			
 			try ThrowFileError()
 		}
-		return completeArray(ptr, count: readCount)
+        return completeArray(from: ptr, count: readCount)
 	}
 	
 	/// Reads the entire file as a string
 	public func readString() throws -> String {
-		let bytes = try self.readSomeBytes(self.size())
-		return UTF8Encoding.encode(bytes)
+		let bytes = try self.readSomeBytes(count: self.size())
+        return UTF8Encoding.encode(bytes: bytes)
 	}
 	
 	/// Writes the string to the file using UTF-8 encoding
@@ -432,7 +432,7 @@ public class File : Closeable {
 	/// - returns: Returns the number of bytes which were written
 	/// - throws: `PerfectError.FileError`
 	public func writeString(s: String) throws -> Int {
-		return try writeBytes(Array(s.utf8))
+		return try writeBytes(bytes: Array(s.utf8))
 	}
 	
 	/// Writes the array of bytes to the file
@@ -440,7 +440,7 @@ public class File : Closeable {
 	/// - returns: The number of bytes which were written
 	/// - throws: `PerfectError.FileError`
 	public func writeBytes(bytes: [UInt8]) throws -> Int {
-		return try writeBytes(bytes, dataPosition: 0, length: bytes.count)
+		return try writeBytes(bytes: bytes, dataPosition: 0, length: bytes.count)
 	}
 	
 	/// Write the indicated bytes to the file

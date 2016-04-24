@@ -57,11 +57,11 @@ public class HTTPServer {
 		
 		let socket = NetTCP()
 		socket.initSocket()
-		try socket.bind(port, address: bindAddress)
+		try socket.bind(port: port, address: bindAddress)
 		
 		print("Starting HTTP server on \(bindAddress):\(port) with document root \(self.documentRoot)")
 		
-		try self.startInner(socket)
+		try self.startInner(socket: socket)
 	}
 	
 	/// Start the server on the indicated TCP port and optional address.
@@ -195,26 +195,26 @@ public class HTTPServer {
 		
 		socket.cipherList = cipherList
 				
-		guard socket.useCertificateChainFile(sslCert) else {
+		guard socket.useCertificateChainFile(cert: sslCert) else {
 			let code = Int32(socket.errorCode())
-			throw PerfectError.NetworkError(code, "Error setting certificate chain file: \(socket.errorStr(code))")
+			throw PerfectError.NetworkError(code, "Error setting certificate chain file: \(socket.errorStr(errorCode: code))")
 		}
 		
-		guard socket.usePrivateKeyFile(sslKey) else {
+		guard socket.usePrivateKeyFile(cert: sslKey) else {
 			let code = Int32(socket.errorCode())
-			throw PerfectError.NetworkError(code, "Error setting private key file: \(socket.errorStr(code))")
+			throw PerfectError.NetworkError(code, "Error setting private key file: \(socket.errorStr(errorCode: code))")
 		}
 		
 		guard socket.checkPrivateKey() else {
 			let code = Int32(socket.errorCode())
-			throw PerfectError.NetworkError(code, "Error validating private key file: \(socket.errorStr(code))")
+			throw PerfectError.NetworkError(code, "Error validating private key file: \(socket.errorStr(errorCode: code))")
 		}
 		
-		try socket.bind(port, address: bindAddress)
+		try socket.bind(port: port, address: bindAddress)
 
 		print("Starting HTTPS server on \(bindAddress):\(port) with document root \(self.documentRoot)")
 		
-		try self.startInner(socket)
+		try self.startInner(socket: socket)
 	}
 	
 	private func startInner(socket: NetTCP) throws {
@@ -235,7 +235,7 @@ public class HTTPServer {
 				
 				if let n = net {
 					Threading.dispatchBlock {
-						self?.handleConnection(n)
+						self?.handleConnection(net: n)
 					}
 				}
 			}
@@ -254,7 +254,7 @@ public class HTTPServer {
 		let req = HTTPWebConnection(net: net, server: self)
 		req.readRequest { requestOk in
 			if requestOk {
-				self.runRequest(req)
+				self.runRequest(req: req)
 			} else {
 				req.connection.close()
 			}
@@ -269,16 +269,16 @@ public class HTTPServer {
 		
 		var size = file.size()
 		let readSize = httpReadSize * 16
-		req.setStatus(200, msg: "OK")
-		req.writeHeaderLine("Content-length: \(size)")
-		req.writeHeaderLine("Content-type: \(MimeType.forExtension(file.path().pathExtension))")
+		req.setStatus(code: 200, msg: "OK")
+		req.writeHeaderLine(h: "Content-length: \(size)")
+		req.writeHeaderLine(h: "Content-type: \(MimeType.forExtension(ext: file.path().pathExtension))")
 		req.pushHeaderBytes()
 		
 		do {
 			while size > 0 {
 				
-				let bytes = try file.readSomeBytes(min(size, readSize))
-				req.writeBodyBytes(bytes)
+				let bytes = try file.readSomeBytes(count: min(size, readSize))
+				req.writeBodyBytes(b: bytes)
 				size -= bytes.count
 			}
 		} catch {
@@ -302,7 +302,7 @@ public class HTTPServer {
 	func runRequest(req: HTTPWebConnection) {
 		guard let pathInfo = req.requestParams["PATH_INFO"] else {
 			
-			req.setStatus(500, msg: "INVALID")
+			req.setStatus(code: 500, msg: "INVALID")
 			req.pushHeaderBytes()
 			req.connection.close()
 			return
@@ -310,16 +310,16 @@ public class HTTPServer {
 		
 		req.requestParams["PERFECTSERVER_DOCUMENT_ROOT"] = self.documentRoot
 		
-		self.runRequest(req, withPathInfo: pathInfo) {
+		self.runRequest(req: req, withPathInfo: pathInfo) {
 			b in
 			if !b {
-				req.setStatus(404, msg: "NOT FOUND")
+				req.setStatus(code: 404, msg: "NOT FOUND")
 				let msg = "The file \"\(pathInfo)\" was not found.".utf8
-				req.writeHeaderLine("Content-length: \(msg.count)")
-				req.writeBodyBytes([UInt8](msg))
+				req.writeHeaderLine(h: "Content-length: \(msg.count)")
+				req.writeBodyBytes(b: [UInt8](msg))
 			}
 			if req.httpKeepAlive {
-				self.handleConnection(req.connection)
+				self.handleConnection(net: req.connection)
 			} else {
 				req.connection.close()
 			}
@@ -354,7 +354,7 @@ public class HTTPServer {
 		}
 		
 		var httpOneOne: Bool {
-			return (self.requestParams["SERVER_PROTOCOL"] ?? "").containsString("1.1")
+			return (self.requestParams["SERVER_PROTOCOL"] ?? "").containsString(string: "1.1")
 		}
 		
 		var httpVersion: String {
@@ -362,7 +362,7 @@ public class HTTPServer {
 		}
 		
 		var httpKeepAlive: Bool {
-			return (self.requestParams["HTTP_CONNECTION"] ?? "").lowercased().containsString("keep-alive")
+			return (self.requestParams["HTTP_CONNECTION"] ?? "").lowercased().containsString(string: "keep-alive")
 		}
 		
 		init(net: NetTCP, server: HTTPServer) {
@@ -412,7 +412,7 @@ public class HTTPServer {
 			case "Authorization":
 				return "HTTP_AUTHORIZATION"
 			default:
-				return "HTTP_" + name.uppercased().stringByReplacingString("-", withString: "_")
+				return "HTTP_" + name.uppercased().stringByReplacingString(find: "-", withString: "_")
 			}
 		}
 		
@@ -421,7 +421,7 @@ public class HTTPServer {
 			self.readHeaders { requestOk in
 				if requestOk {
 					
-					self.readBody(callback)
+					self.readBody(callback: callback)
 					
 				} else {
 					callback(false)
@@ -430,9 +430,9 @@ public class HTTPServer {
 		}
 		
 		func readHeaders(callback: OkCallback) {
-			self.connection.readSomeBytes(httpReadSize) {
+			self.connection.readSomeBytes(count: httpReadSize) {
 				(b:[UInt8]?) in
-				self.didReadHeaderData(b, callback: callback)
+				self.didReadHeaderData(b: b, callback: callback)
 			}
 		}
 		
@@ -445,11 +445,11 @@ public class HTTPServer {
 			let workingDiff = self.workingBuffer.count - self.workingBufferOffset
 			if workingDiff > 0 {
 				// data remaining in working buffer
-				self.putStdinData(Array(self.workingBuffer.suffix(workingDiff)))
+				self.putStdinData(b: Array(self.workingBuffer.suffix(workingDiff)))
 			}
 			self.workingBuffer.removeAll()
 			self.workingBufferOffset = 0
-			self.readBody((Int(cl) ?? 0) - workingDiff, callback: callback)
+			self.readBody(size: (Int(cl) ?? 0) - workingDiff, callback: callback)
 		}
 		
 		func readBody(size: Int, callback: OkCallback) {
@@ -457,11 +457,11 @@ public class HTTPServer {
 				callback(true)
 				return
 			}
-			self.connection.readSomeBytes(size) {
+			self.connection.readSomeBytes(count: size) {
 				[weak self] (b:[UInt8]?) in
 				
 				if b == nil || b!.count == 0 {
-					self?.connection.readBytesFully(1, timeoutSeconds: httpReadTimeout) {
+					self?.connection.readBytesFully(count: 1, timeoutSeconds: httpReadTimeout) {
 						(b:[UInt8]?) in
 						
 						guard b != nil else {
@@ -469,18 +469,18 @@ public class HTTPServer {
 							return
 						}
 						
-						self?.putStdinData(b!)
-						self?.readBody(size - 1, callback: callback)
+						self?.putStdinData(b: b!)
+						self?.readBody(size: size - 1, callback: callback)
 					}
 				} else {
-					self?.putStdinData(b!)
-					self?.readBody(size - b!.count, callback: callback)
+					self?.putStdinData(b: b!)
+					self?.readBody(size: size - b!.count, callback: callback)
 				}
 			}
 		}
 		
 		func processRequestLine(h: ArraySlice<UInt8>) -> Bool {
-			let lineStr = UTF8Encoding.encode(h)
+            let lineStr = UTF8Encoding.encode(bytes: h)
 			var method = "", uri = "", pathInfo = "", queryString = "", hvers = ""
 			
 			var gen = lineStr.unicodeScalars.makeIterator()
@@ -531,7 +531,7 @@ public class HTTPServer {
 		func processHeaderLine(h: ArraySlice<UInt8>) -> Bool {
 			for i in h.startIndex..<h.endIndex {
 				if httpColon == h[i] {
-					let headerKey = transformHeaderName(UTF8Encoding.encode(h[h.startIndex..<i]))
+                    let headerKey = transformHeaderName(name: UTF8Encoding.encode(bytes: h[h.startIndex..<i]))
 					var i2 = i + 1
 					while i2 < h.endIndex {
 						if !UnicodeScalar(h[i2]).isWhiteSpace() {
@@ -539,7 +539,7 @@ public class HTTPServer {
 						}
 						i2 += 1
 					}
-					let headerValue = UTF8Encoding.encode(h[i2..<h.endIndex])
+                    let headerValue = UTF8Encoding.encode(bytes: h[i2..<h.endIndex])
 					self.requestParams[headerKey] = headerValue
 					self.lastHeaderKey = headerKey
 					return true
@@ -557,7 +557,7 @@ public class HTTPServer {
 			}
 			for i in 0..<h.count {
 				if !UnicodeScalar(h[i]).isWhiteSpace() {
-					let extens = UTF8Encoding.encode(h[i..<h.count])
+                    let extens = UTF8Encoding.encode(bytes: h[i..<h.count])
 					self.requestParams[self.lastHeaderKey] = found + " " + extens
 					return true
 				}
@@ -600,17 +600,17 @@ public class HTTPServer {
 						callback(true)
 						return
 					} else if UnicodeScalar(segment.first!).isWhiteSpace() {
-						if !self.processHeaderContinuation(segment) {
+						if !self.processHeaderContinuation(h: segment) {
 							callback(false)
 							return
 						}
 					} else if first {
-						if !self.processRequestLine(segment) {
+						if !self.processRequestLine(h: segment) {
 							callback(false)
 							return
 						}
 					} else {
-						if !self.processHeaderLine(segment) {
+						if !self.processHeaderLine(h: segment) {
 							callback(false)
 							return
 						}
@@ -620,7 +620,7 @@ public class HTTPServer {
 				}
 			}
 			// not done yet
-			self.readHeaders(callback)
+			self.readHeaders(callback: callback)
 		}
 		
 		func didReadHeaderData(b:[UInt8]?, callback: OkCallback) {
@@ -629,18 +629,18 @@ public class HTTPServer {
 				return
 			}
 			if b!.count == 0 { // no data was available for immediate consumption. try reading with timeout
-				self.connection.readBytesFully(1, timeoutSeconds: httpReadTimeout) {
+				self.connection.readBytesFully(count: 1, timeoutSeconds: httpReadTimeout) {
 					(b2:[UInt8]?) in
 					
 					if b2 == nil { // timeout. request dead
 						callback(false)
 					} else {
-						self.didReadHeaderData(b2, callback: callback)
+						self.didReadHeaderData(b: b2, callback: callback)
 					}
 				}
 			} else {
 				self.workingBuffer.append(contentsOf: b!)
-				self.scanWorkingBuffer(callback)
+				self.scanWorkingBuffer(callback: callback)
 			}
 		}
 		
@@ -651,12 +651,12 @@ public class HTTPServer {
 					self.stdin = b
 				} else {
 					self.mimes = MimeReader(contentType!)
-					self.mimes!.addToBuffer(b)
+					self.mimes!.addToBuffer(bytes: b)
 				}
 			} else if self.stdin != nil {
 				self.stdin!.append(contentsOf: b)
 			} else {
-				self.mimes!.addToBuffer(b)
+				self.mimes!.addToBuffer(bytes: b)
 			}
 		}
 		
@@ -670,11 +670,11 @@ public class HTTPServer {
 				
 				let statusLine = "\(self.httpVersion) \(statusCode) \(statusMsg)\r\n"
 				let firstBytes = [UInt8](statusLine.utf8)
-				writeBytes(firstBytes)
+				writeBytes(b: firstBytes)
 				
 			}
 			if !b.isEmpty {
-				writeBytes(b)
+				writeBytes(b: b)
 			}
 		}
 		
@@ -685,18 +685,18 @@ public class HTTPServer {
 				} else {
 					header += "\r\n" // final CRLF
 				}
-				writeHeaderBytes([UInt8](header.utf8))
+				writeHeaderBytes(b: [UInt8](header.utf8))
 				header = ""
 			}
 		}
 		
 		func writeBodyBytes(b: [UInt8]) {
 			pushHeaderBytes()
-			writeBytes(b)
+			writeBytes(b: b)
 		}
 		
 		func writeBytes(b: [UInt8]) {
-			self.connection.writeBytesFully(b)
+			self.connection.writeBytesFully(bytes: b)
 		}
 		
 	}

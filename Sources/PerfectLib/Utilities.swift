@@ -80,7 +80,7 @@ public struct UTF16Encoding {
 	
 	/// Use a UTF-16 character generator to create a String.
 	public static func encode<G : IteratorProtocol where G.Element == UTF16.CodeUnit>(generator: G) -> String {
-		return Encoding.encode(UTF16(), generator: generator)
+		return Encoding.encode(decoder: UTF16(), generator: generator)
 	}
 }
 
@@ -89,12 +89,12 @@ public struct UTF8Encoding {
 	
 	/// Use a character generator to create a String.
 	public static func encode<G : IteratorProtocol where G.Element == UTF8.CodeUnit>(generator: G) -> String {
-		return Encoding.encode(UTF8(), generator: generator)
+		return Encoding.encode(decoder: UTF8(), generator: generator)
 	}
 	
 	/// Use a character sequence to create a String.
 	public static func encode<S : Sequence where S.Iterator.Element == UTF8.CodeUnit>(bytes: S) -> String {
-		return encode(bytes.makeIterator())
+        return encode(generator: bytes.makeIterator())
 	}
 	
 	/// Decode a String into an array of UInt8.
@@ -236,7 +236,7 @@ extension String {
 			}
 		}
 		
-		return UTF8Encoding.encode(bytesArray)
+        return UTF8Encoding.encode(bytes: bytesArray)
 	}
 	
 	public var decodeHex: [UInt8]? {
@@ -306,11 +306,11 @@ extension String {
 	/// Parse an HTTP Digest authentication header returning a Dictionary containing each part.
 	public func parseAuthentication() -> [String:String] {
 		var ret = [String:String]()
-		if let _ = self.rangeOf("Digest ") {
+        if let _ = self.range(of: "Digest ") {
 			ret["type"] = "Digest"
 			let wantFields = ["username", "nonce", "nc", "cnonce", "response", "uri", "realm", "qop", "algorithm"]
 			for field in wantFields {
-				if let foundField = String.extractField(self, named: field) {
+				if let foundField = String.extractField(from: self, named: field) {
 					ret[field] = foundField
 				}
 			}
@@ -319,7 +319,7 @@ extension String {
 	}
 	
 	private static func extractField(from: String, named: String) -> String? {
-		guard let range = from.rangeOf(named + "=") else {
+        guard let range = from.range(of: named + "=") else {
 			return nil
 		}
 		
@@ -439,7 +439,7 @@ extension String {
 	
 	// For compatibility due to shifting swift
 	public func containsString(string: String) -> Bool {
-		return nil != self.rangeOf(string)
+        return nil != self.range(of: string)
 	}
 }
 
@@ -491,11 +491,11 @@ extension String {
 	}
 	
 	var pathComponents: [String] {
-		return self.pathComponents(true)
+        return self.pathComponents(addFirstLast: true)
 	}
 	
 	var lastPathComponent: String {
-		let last = self.pathComponents(false).last ?? ""
+        let last = self.pathComponents(addFirstLast: false).last ?? ""
 		if last.isEmpty && self.characters.first == Character(pathSeparator) {
 			return String(pathSeparator)
 		}
@@ -503,7 +503,7 @@ extension String {
 	}
 	
 	var stringByDeletingLastPathComponent: String {
-		var comps = self.pathComponents(false)
+        var comps = self.pathComponents(addFirstLast: false)
 		guard comps.count > 1 else {
 			if self.beginsWithSeparator {
 				return String(pathSeparator)
@@ -539,9 +539,9 @@ extension String {
 			if noTrailsIndex == startIndex {
 				return self
 			}
-			return self.substringTo(noTrailsIndex)
+            return self.substring(to: noTrailsIndex)
 		}
-		return self.substringTo(endIndex)
+        return self.substring(to: endIndex)
 	}
 	
 	var pathExtension: String {
@@ -564,7 +564,7 @@ extension String {
 		guard endIndex != startIndex else {
 			return ""
 		}
-		return self.substringWith(endIndex.successor()..<noTrailsIndex)
+        return self.substring(with: endIndex.successor()..<noTrailsIndex)
 	}
 
 	var stringByResolvingSymlinksInPath: String {

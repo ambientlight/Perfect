@@ -32,7 +32,7 @@ class HeaderField {
 	}
 	
 	var nameStr: String {
-		return UTF8Encoding.encode(name)
+        return UTF8Encoding.encode(bytes: name)
 	}
 	
 	init(name: [UInt8], value: [UInt8]) {
@@ -41,8 +41,8 @@ class HeaderField {
 	}
 	
 	init(name: String, value: String) {
-		self.name = UTF8Encoding.decode(name)
-		self.value = UTF8Encoding.decode(value)
+		self.name = UTF8Encoding.decode(str: name)
+		self.value = UTF8Encoding.decode(str: value)
 	}
 	
 	convenience init(name: String) {
@@ -62,7 +62,7 @@ class DynamicTable {
 	var size = 0
 	var capacity = -1 {
 		didSet {
-			self.capacityChanged(oldValue)
+			self.capacityChanged(oldValue: oldValue)
 		}
 	}
 	
@@ -75,7 +75,7 @@ class DynamicTable {
 	
 	init(initialCapacity: Int) {
 		self.capacity = initialCapacity
-		self.capacityChanged(-1)
+		self.capacityChanged(oldValue: -1)
 	}
 	
 	private func capacityChanged(oldValue: Int) {
@@ -242,7 +242,7 @@ class StaticTable {
 		var i = table.count
 		
 		while i > 0 {
-			ret[StaticTable.getEntry(i).nameStr] = i
+			ret[StaticTable.getEntry(index: i).nameStr] = i
 			i -= 1
 		}
 		
@@ -256,7 +256,7 @@ class StaticTable {
 	}
 	
 	static func getIndex(name: [UInt8]) -> Int {
-		let s = UTF8Encoding.encode(name)
+        let s = UTF8Encoding.encode(bytes: name)
 		if let idx = tableByName[s] {
 			return idx
 		}
@@ -264,10 +264,10 @@ class StaticTable {
 	}
 	
 	static func getIndex(name: [UInt8], value: [UInt8]) -> Int {
-		let idx = getIndex(name)
+        let idx = getIndex(name: name)
 		if idx != -1 {
 			for i in idx...length {
-				let entry = getEntry(i)
+				let entry = getEntry(index: i)
 				if entry.name != name {
 					break
 				}
@@ -597,7 +597,7 @@ class HuffmanEncoder {
 	
 	func encode(input: Bytes) throws -> Bytes {
 		let o = Bytes()
-		try encode(o, input: input)
+		try encode(out: o, input: input)
 		return o
 	}
 	
@@ -617,14 +617,14 @@ class HuffmanEncoder {
 			while n >= 8 {
 				n -= 8
 				let newVal = (current >> n) & 0xFF
-				out.import8Bits(UInt8(newVal))
+				out.import8Bits(byte: UInt8(newVal))
 			}
 		}
 		if n > 0 {
 			current <<= (8 - n)
 			current |= (0xFF >> n)
 			let newVal = current & 0xFF
-			out.import8Bits(UInt8(newVal))
+			out.import8Bits(byte: UInt8(newVal))
 		}
 	}
 	
@@ -668,7 +668,7 @@ class HuffmanDecoder {
 	let root: Node
 	
 	init(codes: [Int], lengths: [UInt8]) {
-		self.root = HuffmanDecoder.buildTree(codes, lengths: lengths)
+		self.root = HuffmanDecoder.buildTree(codes: codes, lengths: lengths)
 	}
 	
 	func decode(buf: [UInt8]) throws -> [UInt8] {
@@ -718,7 +718,7 @@ class HuffmanDecoder {
 	static func buildTree(codes: [Int], lengths: [UInt8]) -> Node {
 		let root = Node()
 		for i in 0..<codes.count {
-			insert(root, symbol: i, code: codes[i], length: lengths[i])
+			insert(root: root, symbol: i, code: codes[i], length: lengths[i])
 		}
 		return root
 	}
@@ -804,43 +804,43 @@ public class HPACKEncoder {
 	
 	/// Encodes a new header field and value, writing the results to out Bytes.
 	public func encodeHeader(out: Bytes, name: String, value: String, sensitive: Bool = false, incrementalIndexing: Bool = true) throws {
-		return try encodeHeader(out, name: UTF8Encoding.decode(name), value: UTF8Encoding.decode(value), sensitive: sensitive, incrementalIndexing: incrementalIndexing)
+        return try encodeHeader(out: out, name: UTF8Encoding.decode(str: name), value: UTF8Encoding.decode(str: value), sensitive: sensitive, incrementalIndexing: incrementalIndexing)
 	}
 	
 	/// Encodes a new header field and value, writing the results to out Bytes.
 	public func encodeHeader(out: Bytes, name: [UInt8], value: [UInt8], sensitive: Bool = false, incrementalIndexing: Bool = true) throws {
 		if sensitive {
-			let nameIndex = getNameIndex(name)
-			try encodeLiteral(out, name: name, value: value, indexType: .Never, nameIndex: nameIndex)
+			let nameIndex = getNameIndex(name: name)
+			try encodeLiteral(out: out, name: name, value: value, indexType: .Never, nameIndex: nameIndex)
 			return
 		}
 		if capacity == 0 {
-			let staticTableIndex = StaticTable.getIndex(name, value: value)
+			let staticTableIndex = StaticTable.getIndex(name: name, value: value)
 			if staticTableIndex == -1 {
-				let nameIndex = StaticTable.getIndex(name)
-				try encodeLiteral(out, name: name, value: value, indexType: .None, nameIndex: nameIndex)
+				let nameIndex = StaticTable.getIndex(name: name)
+				try encodeLiteral(out: out, name: name, value: value, indexType: .None, nameIndex: nameIndex)
 			} else {
-				encodeInteger(out, mask: 0x80, n: 7, i: staticTableIndex)
+				encodeInteger(out: out, mask: 0x80, n: 7, i: staticTableIndex)
 			}
 			return
 		}
-		let headerSize = HeaderField.sizeOf(name, value: value)
+		let headerSize = HeaderField.sizeOf(name: name, value: value)
 		if headerSize > capacity {
-			let nameIndex = getNameIndex(name)
-			try encodeLiteral(out, name: name, value: value, indexType: .None, nameIndex: nameIndex)
-		} else if let headerField = getEntry(name, value: value) {
-			let index = getIndex(headerField.index) + StaticTable.length
-			encodeInteger(out, mask: 0x80, n: 7, i: index)
+			let nameIndex = getNameIndex(name: name)
+			try encodeLiteral(out: out, name: name, value: value, indexType: .None, nameIndex: nameIndex)
+		} else if let headerField = getEntry(name: name, value: value) {
+            let index = getIndex(index: headerField.index) + StaticTable.length
+			encodeInteger(out: out, mask: 0x80, n: 7, i: index)
 		} else {
-			let staticTableIndex = StaticTable.getIndex(name, value: value)
+			let staticTableIndex = StaticTable.getIndex(name: name, value: value)
 			if staticTableIndex != -1 {
-				encodeInteger(out, mask: 0x80, n: 7, i: staticTableIndex)
+				encodeInteger(out: out, mask: 0x80, n: 7, i: staticTableIndex)
 			} else {
-				let nameIndex = getNameIndex(name)
-				ensureCapacity(headerSize)
+				let nameIndex = getNameIndex(name: name)
+				ensureCapacity(headerSize: headerSize)
 				let indexType = incrementalIndexing ? IndexType.Incremental : IndexType.None
-				try encodeLiteral(out, name: name, value: value, indexType: indexType, nameIndex: nameIndex)
-				add(name, value: value)
+				try encodeLiteral(out: out, name: name, value: value, indexType: indexType, nameIndex: nameIndex)
+				add(name: name, value: value)
 			}
 		}
 	}
@@ -878,7 +878,7 @@ public class HPACKEncoder {
 		}
 		let eldest = head.after
 		let h = eldest!.hash
-		let i = index(h)
+		let i = index(h: h)
 		
 		var prev = headerFields[i]
 		var e = prev
@@ -902,7 +902,7 @@ public class HPACKEncoder {
 	}
 	
 	func add(name: [UInt8], value: [UInt8]) {
-		let headerSize = HeaderField.sizeOf(name, value: value)
+		let headerSize = HeaderField.sizeOf(name: name, value: value)
 		
 		if headerSize > capacity {
 			clear()
@@ -913,13 +913,13 @@ public class HPACKEncoder {
 			remove()
 		}
 		
-		let h = hash(name)
-		let i = index(h)
+		let h = hash(name: name)
+		let i = index(h: h)
 		
 		let old = headerFields[i]
 		let e = HeaderEntry(hash: h, name: name, value: value, index: head.before!.index - 1, next: old)
 		headerFields[i] = e
-		e.addBefore(head)
+		e.addBefore(existingEntry: head)
 		size += headerSize
 	}
 	
@@ -934,8 +934,8 @@ public class HPACKEncoder {
 		if length == 0 || name.count == 0 {
 			return -1
 		}
-		let h = hash(name)
-		let i = self.index(h)
+		let h = hash(name: name)
+		let i = self.index(h: h)
 		var index = -1
 		
 		var e = headerFields[i]
@@ -950,15 +950,15 @@ public class HPACKEncoder {
 			e = ee.next
 		}
 		
-		return getIndex(index)
+        return getIndex(index: index)
 	}
 	
 	func getEntry(name: [UInt8], value: [UInt8]) -> HeaderEntry? {
 		if length == 0 || name.count == 0 || value.count == 0 {
 			return nil
 		}
-		let h = hash(name)
-		let i = index(h)
+		let h = hash(name: name)
+		let i = index(h: h)
 		
 		var e = headerFields[i]
 		
@@ -992,9 +992,9 @@ public class HPACKEncoder {
 	}
 	
 	func getNameIndex(name: [UInt8]) -> Int {
-		var index = StaticTable.getIndex(name)
+		var index = StaticTable.getIndex(name: name)
 		if index == -1 {
-			index = getIndex(name)
+            index = getIndex(name: name)
 			if index >= 0 {
 				index += StaticTable.length
 			}
@@ -1005,16 +1005,16 @@ public class HPACKEncoder {
 	func encodeInteger(out: Bytes, mask: Int, n: Int, i: Int) {
 		let nbits = 0xFF >> (8 - n)
 		if i < nbits {
-			out.import8Bits(UInt8(mask | i))
+			out.import8Bits(byte: UInt8(mask | i))
 		} else {
-			out.import8Bits(UInt8(mask | nbits))
+			out.import8Bits(byte: UInt8(mask | nbits))
 			var length = i - nbits
 			while true {
 				if (length & ~0x7F) == 0 {
-					out.import8Bits(UInt8(length))
+					out.import8Bits(byte: UInt8(length))
 					return
 				} else {
-					out.import8Bits(UInt8((length & 0x7f) | 0x80))
+					out.import8Bits(byte: UInt8((length & 0x7f) | 0x80))
 					length >>= 7
 				}
 			}
@@ -1022,13 +1022,13 @@ public class HPACKEncoder {
 	}
 	
 	func encodeStringLiteral(out: Bytes, string: [UInt8]) throws {
-		let huffmanLength = huffmanEncoderInstance.getEncodedLength(string)
+		let huffmanLength = huffmanEncoderInstance.getEncodedLength(data: string)
 		if huffmanLength < string.count {
-			encodeInteger(out, mask: 0x80, n: 7, i: huffmanLength)
-			try huffmanEncoderInstance.encode(out, input: Bytes(existingBytes: string))
+			encodeInteger(out: out, mask: 0x80, n: 7, i: huffmanLength)
+			try huffmanEncoderInstance.encode(out: out, input: Bytes(existingBytes: string))
 		} else {
-			encodeInteger(out, mask: 0x00, n: 7, i: string.count)
-			out.importBytes(string)
+			encodeInteger(out: out, mask: 0x00, n: 7, i: string.count)
+            out.importBytes(bytes: string)
 		}
 	}
 	
@@ -1048,11 +1048,11 @@ public class HPACKEncoder {
 			prefixBits = 4
 		}
 		
-		encodeInteger(out, mask: mask, n: prefixBits, i: nameIndex == -1 ? 0 : nameIndex)
+		encodeInteger(out: out, mask: mask, n: prefixBits, i: nameIndex == -1 ? 0 : nameIndex)
 		if nameIndex == -1 {
-			try encodeStringLiteral(out, string: name)
+			try encodeStringLiteral(out: out, string: name)
 		}
-		try encodeStringLiteral(out, string: value)
+		try encodeStringLiteral(out: out, string: value)
 	}
 
 	func setMaxHeaderTableSize(out: Bytes, maxHeaderTableSize: Int) {
@@ -1060,8 +1060,8 @@ public class HPACKEncoder {
 			return
 		}
 		capacity = maxHeaderTableSize
-		ensureCapacity(0)
-		encodeInteger(out, mask: 0x20, n: 5, i: maxHeaderTableSize)
+		ensureCapacity(headerSize: 0)
+		encodeInteger(out: out, mask: 0x20, n: 5, i: maxHeaderTableSize)
 	}
 	
 }
@@ -1139,7 +1139,7 @@ public class HPACKDecoder {
 	var size: Int { return dynamicTable.size }
 	
 	func getHeaderField(index: Int) -> HeaderField {
-		return dynamicTable.getEntry(index + 1)
+		return dynamicTable.getEntry(index: index + 1)
 	}
 	
 	func setDynamicTableSize(dynamicTableSize: Int) {
@@ -1150,9 +1150,9 @@ public class HPACKDecoder {
 	
 	func readName(index: Int) throws {
 		if index <= StaticTable.length {
-			name = StaticTable.getEntry(index).name
+			name = StaticTable.getEntry(index: index).name
 		} else if index - StaticTable.length <= dynamicTable.length {
-			name = dynamicTable.getEntry(index - StaticTable.length).name
+			name = dynamicTable.getEntry(index: index - StaticTable.length).name
 		} else {
 			throw Exception.IllegalIndexValue
 		}
@@ -1160,11 +1160,11 @@ public class HPACKDecoder {
 	
 	func indexHeader(index: Int, headerListener: HeaderListener) throws {
 		if index <= StaticTable.length {
-			let headerField = StaticTable.getEntry(index)
-			addHeader(headerListener, name: headerField.name, value: headerField.value, sensitive: false)
+			let headerField = StaticTable.getEntry(index: index)
+			addHeader(headerListener: headerListener, name: headerField.name, value: headerField.value, sensitive: false)
 		} else if index - StaticTable.length <= dynamicTable.length {
-			let headerField = dynamicTable.getEntry(index - StaticTable.length)
-			addHeader(headerListener, name: headerField.name, value: headerField.value, sensitive: false)
+			let headerField = dynamicTable.getEntry(index: index - StaticTable.length)
+			addHeader(headerListener: headerListener, name: headerField.name, value: headerField.value, sensitive: false)
 		} else {
 			throw Exception.IllegalIndexValue
 		}
@@ -1173,7 +1173,7 @@ public class HPACKDecoder {
 	func addHeader(headerListener: HeaderListener, name: [UInt8], value: [UInt8], sensitive: Bool) {
 		let newSize = headerSize + name.count + value.count
 		if newSize <= maxHeaderSize {
-			headerListener.addHeader(name, value: value, sensitive: sensitive)
+			headerListener.addHeader(name: name, value: value, sensitive: sensitive)
 			headerSize = newSize
 		} else {
 			headerSize = maxHeaderSize + 1
@@ -1181,12 +1181,12 @@ public class HPACKDecoder {
 	}
 	
 	func insertHeader(headerListener: HeaderListener, name: [UInt8], value: [UInt8], indexType: IndexType) {
-		addHeader(headerListener, name: name, value: value, sensitive: indexType == .Never)
+		addHeader(headerListener: headerListener, name: name, value: value, sensitive: indexType == .Never)
 		switch indexType {
 		case .None, .Never:
 			()
 		case .Incremental:
-			dynamicTable.add(HeaderField(name: name, value: value))
+			dynamicTable.add(header: HeaderField(name: name, value: value))
 		}
 	}
 	
@@ -1199,12 +1199,12 @@ public class HPACKDecoder {
 	}
 	
 	func readStringLiteral(input: Bytes, length: Int) throws -> [UInt8] {
-		let read = input.exportBytes(length)
+		let read = input.exportBytes(count: length)
 		if read.count != length {
 			throw Exception.DecompressionException
 		}
 		if huffmanEncoded {
-			return try huffmanDecoderInstance.decode(read)
+			return try huffmanDecoderInstance.decode(buf: read)
 		} else {
 			return read
 		}
@@ -1249,7 +1249,7 @@ public class HPACKDecoder {
 					} else if index == 0x7F {
 						state = .ReadIndexedHeader
 					} else {
-						try indexHeader(index, headerListener: headerListener)
+						try indexHeader(index: index, headerListener: headerListener)
 					}
 				} else if (b & 0x40) == 0x40 {
 					indexType = .Incremental
@@ -1259,7 +1259,7 @@ public class HPACKDecoder {
 					} else if index == 0x3F {
 						state = .ReadIndexedHeaderName
 					} else {
-						try readName(index)
+						try readName(index: index)
 						state = .ReadLiteralHeaderValueLengthPrefix
 					}
 				} else if (b & 0x20) == 0x20 {
@@ -1267,7 +1267,7 @@ public class HPACKDecoder {
 					if index == 0x1F {
 						state = .ReadMaxDynamicTableSize
 					} else {
-						setDynamicTableSize(index)
+						setDynamicTableSize(dynamicTableSize: index)
 						state = .ReadHeaderRepresentation
 					}
 				} else {
@@ -1278,42 +1278,42 @@ public class HPACKDecoder {
 					} else if index == 0x0F {
 						state = .ReadIndexedHeaderName
 					} else {
-						try readName(index)
+						try readName(index: index)
 						state = .ReadLiteralHeaderValueLengthPrefix
 					}
 				}
 				
 			case .ReadMaxDynamicTableSize:
-				let maxSize = try decodeULE128(input)
+				let maxSize = try decodeULE128(input: input)
 				if maxSize == -1 {
 					return
 				}
 				if maxSize > HPACKEncoder.INDEX_MAX - index {
 					throw Exception.DecompressionException
 				}
-				setDynamicTableSize(index + maxSize)
+				setDynamicTableSize(dynamicTableSize: index + maxSize)
 				state = .ReadHeaderRepresentation
 			
 			case .ReadIndexedHeader:
-				let headerIndex = try decodeULE128(input)
+				let headerIndex = try decodeULE128(input: input)
 				if headerIndex == -1 {
 					return
 				}
 				if headerIndex > HPACKEncoder.INDEX_MAX - index {
 					throw Exception.DecompressionException
 				}
-				try indexHeader(index + headerIndex, headerListener: headerListener)
+				try indexHeader(index: index + headerIndex, headerListener: headerListener)
 				state = .ReadHeaderRepresentation
 				
 			case .ReadIndexedHeaderName:
-				let nameIndex = try decodeULE128(input)
+				let nameIndex = try decodeULE128(input: input)
 				if nameIndex == -1 {
 					return
 				}
 				if nameIndex > HPACKEncoder.INDEX_MAX - index {
 					throw Exception.DecompressionException
 				}
-				try readName(index + nameIndex)
+				try readName(index: index + nameIndex)
 				state = .ReadLiteralHeaderValueLengthPrefix
 				
 			case .ReadLiteralHeaderNameLengthPrefix:
@@ -1328,7 +1328,7 @@ public class HPACKDecoder {
 					if nameLength == 0 {
 						throw Exception.DecompressionException
 					}
-					if exceedsMaxHeaderSize(nameLength) {
+					if exceedsMaxHeaderSize(size: nameLength) {
 						if indexType == .None {
 							name = HPACKDecoder.empty
 							skipLength = nameLength
@@ -1348,7 +1348,7 @@ public class HPACKDecoder {
 			
 			case .ReadLiteralHeaderNameLength:
 				
-				nameLength = try decodeULE128(input)
+				nameLength = try decodeULE128(input: input)
 				if nameLength == -1 {
 					return
 				}
@@ -1356,7 +1356,7 @@ public class HPACKDecoder {
 					throw Exception.DecompressionException
 				}
 				nameLength += index
-				if exceedsMaxHeaderSize(nameLength) {
+				if exceedsMaxHeaderSize(size: nameLength) {
 					if indexType == .None {
 						name = HPACKDecoder.empty
 						skipLength = nameLength
@@ -1379,7 +1379,7 @@ public class HPACKDecoder {
 					return
 				}
 				
-				name = try readStringLiteral(input, length: nameLength)
+				name = try readStringLiteral(input: input, length: nameLength)
 				state = .ReadLiteralHeaderValueLengthPrefix
 				
 			case .SkipLiteralHeaderName:
@@ -1401,7 +1401,7 @@ public class HPACKDecoder {
 				} else {
 					valueLength = index
 					let newHeaderSize = nameLength + valueLength
-					if exceedsMaxHeaderSize(newHeaderSize) {
+					if exceedsMaxHeaderSize(size: newHeaderSize) {
 						headerSize = maxHeaderSize + 1
 						if indexType == .None {
 							state = .SkipLiteralHeaderValue
@@ -1415,7 +1415,7 @@ public class HPACKDecoder {
 					}
 					
 					if valueLength == 0 {
-						insertHeader(headerListener, name: name!, value: HPACKDecoder.empty, indexType: indexType)
+						insertHeader(headerListener: headerListener, name: name!, value: HPACKDecoder.empty, indexType: indexType)
 						state = .ReadHeaderRepresentation
 					} else {
 						state = .ReadLiteralHeaderValue
@@ -1424,7 +1424,7 @@ public class HPACKDecoder {
 				
 			case .ReadLiteralHeaderValueLength:
 				
-				valueLength = try decodeULE128(input)
+				valueLength = try decodeULE128(input: input)
 				if valueLength == -1 {
 					return
 				}
@@ -1454,8 +1454,8 @@ public class HPACKDecoder {
 					return
 				}
 				
-				let value = try readStringLiteral(input, length: valueLength)
-				insertHeader(headerListener, name: name!, value: value, indexType: indexType)
+				let value = try readStringLiteral(input: input, length: valueLength)
+				insertHeader(headerListener: headerListener, name: name!, value: value, indexType: indexType)
 				state = .ReadHeaderRepresentation
 				
 			case .SkipLiteralHeaderValue:
