@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A04965F1CCF732100646F26 /* SwiftCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A04965E1CCF732100646F26 /* SwiftCompatibility.swift */; };
 		F80C63AE1CC158F40002F3C9 /* Bytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63AD1CC158F40002F3C9 /* Bytes.swift */; };
 		F80C63D21CC1590F0002F3C9 /* cURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63AF1CC1590E0002F3C9 /* cURL.swift */; };
 		F80C63D31CC1590F0002F3C9 /* Dir.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63B01CC1590E0002F3C9 /* Dir.swift */; };
@@ -62,6 +63,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1A04965E1CCF732100646F26 /* SwiftCompatibility.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SwiftCompatibility.swift; path = ../../Sources/PerfectLib/SwiftCompatibility.swift; sourceTree = "<group>"; };
 		F80C63AD1CC158F40002F3C9 /* Bytes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Bytes.swift; path = ../../Sources/PerfectLib/Bytes.swift; sourceTree = "<group>"; };
 		F80C63AF1CC1590E0002F3C9 /* cURL.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = cURL.swift; path = ../../Sources/PerfectLib/cURL.swift; sourceTree = "<group>"; };
 		F80C63B01CC1590E0002F3C9 /* Dir.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Dir.swift; path = ../../Sources/PerfectLib/Dir.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				F80C63CF1CC1590E0002F3C9 /* WebRequest.swift */,
 				F80C63D01CC1590E0002F3C9 /* WebResponse.swift */,
 				F80C63D11CC1590F0002F3C9 /* WebSocketHandler.swift */,
+				1A04965E1CCF732100646F26 /* SwiftCompatibility.swift */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -355,6 +358,7 @@
 				F80C63D71CC1590F0002F3C9 /* File.swift in Sources */,
 				F80C63F21CC1590F0002F3C9 /* WebRequest.swift in Sources */,
 				F80C63E91CC1590F0002F3C9 /* PerfectServer.swift in Sources */,
+				1A04965F1CCF732100646F26 /* SwiftCompatibility.swift in Sources */,
 				F80C63D21CC1590F0002F3C9 /* cURL.swift in Sources */,
 				F80C63D41CC1590F0002F3C9 /* DynamicLoader.swift in Sources */,
 				F80C63EB1CC1590F0002F3C9 /* StaticFileHandler.swift in Sources */,

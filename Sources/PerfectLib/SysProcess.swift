@@ -101,7 +101,12 @@ public class SysProcess : Closeable {
 		posix_spawn_file_actions_addclose(&action, fSTDERR[1]);
 
 		var procPid = pid_t()
-		let spawnRes = posix_spawnp(&procPid, cmd, &action, UnsafeMutablePointer<posix_spawnattr_t?>(nil), cArgs, cEnv)
+#if os(Linux)
+        let cRestrict = UnsafePointer<posix_spawnattr_t>(nil)
+#else
+        let cRestrict = UnsafePointer<posix_spawnattr_t?>(nil)
+#endif
+        let spawnRes = posix_spawnp(&procPid, cmd, &action, cRestrict, cArgs, cEnv)
 		posix_spawn_file_actions_destroy(&action)
 
 		idx = 0

@@ -354,7 +354,7 @@ public class WebRequest {
 	}
 	
 	private func extractField(from: String, named: String) -> String? {
-        guard let range = from.range(of: named + "=") else {
+        guard let range = from.rangeOf(string: named + "=") else {
 			return nil
 		}
 		
