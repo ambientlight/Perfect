@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A73BFC51CCF5EC500B7416D /* SwiftCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AB3D931CCAB763002CE7A0 /* SwiftCompatibility.swift */; };
 		F80C63AE1CC158F40002F3C9 /* Bytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63AD1CC158F40002F3C9 /* Bytes.swift */; };
 		F80C63D21CC1590F0002F3C9 /* cURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63AF1CC1590E0002F3C9 /* cURL.swift */; };
 		F80C63D31CC1590F0002F3C9 /* Dir.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C63B01CC1590E0002F3C9 /* Dir.swift */; };
@@ -48,7 +49,6 @@
 		F88D0FC21CB327C6000D499D /* PerfectLib.h in Headers */ = {isa = PBXBuildFile; fileRef = F88D0FC11CB327C6000D499D /* PerfectLib.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F88D0FC41CB32D72000D499D /* libstdc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F88D0FC31CB32D72000D499D /* libstdc++.tbd */; };
 		F88D0FC81CB32E56000D499D /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F88D0FC71CB32E56000D499D /* libcurl.tbd */; };
-		F8AB3D941CCAB763002CE7A0 /* SwiftCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AB3D931CCAB763002CE7A0 /* SwiftCompatibility.swift */; };
 		F8F289C91BD53CF000367249 /* PerfectLib.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8F289BE1BD53CF000367249 /* PerfectLib.framework */; };
 /* End PBXBuildFile section */
 
@@ -358,7 +358,7 @@
 				F80C63D71CC1590F0002F3C9 /* File.swift in Sources */,
 				F80C63F21CC1590F0002F3C9 /* WebRequest.swift in Sources */,
 				F80C63E91CC1590F0002F3C9 /* PerfectServer.swift in Sources */,
-				F8AB3D941CCAB763002CE7A0 /* SwiftCompatibility.swift in Sources */,
+				1A73BFC51CCF5EC500B7416D /* SwiftCompatibility.swift in Sources */,
 				F80C63D21CC1590F0002F3C9 /* cURL.swift in Sources */,
 				F80C63D41CC1590F0002F3C9 /* DynamicLoader.swift in Sources */,
 				F80C63EB1CC1590F0002F3C9 /* StaticFileHandler.swift in Sources */,
