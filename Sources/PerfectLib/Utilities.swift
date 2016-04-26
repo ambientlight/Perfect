@@ -306,7 +306,7 @@ extension String {
 	/// Parse an HTTP Digest authentication header returning a Dictionary containing each part.
 	public func parseAuthentication() -> [String:String] {
 		var ret = [String:String]()
-        if let _ = self.range(of: "Digest ") {
+        if let _ = self.rangeOf(string: "Digest ") {
 			ret["type"] = "Digest"
 			let wantFields = ["username", "nonce", "nc", "cnonce", "response", "uri", "realm", "qop", "algorithm"]
 			for field in wantFields {
@@ -319,7 +319,7 @@ extension String {
 	}
 	
 	private static func extractField(from: String, named: String) -> String? {
-        guard let range = from.range(of: named + "=") else {
+        guard let range = from.rangeOf(string: named + "=") else {
 			return nil
 		}
 		
@@ -439,7 +439,7 @@ extension String {
 	
 	// For compatibility due to shifting swift
 	public func containsString(string: String) -> Bool {
-        return nil != self.range(of: string)
+        return nil != self.rangeOf(string: string)
 	}
 }
 
@@ -539,9 +539,9 @@ extension String {
 			if noTrailsIndex == startIndex {
 				return self
 			}
-            return self.substring(to: noTrailsIndex)
+            return self.substringTo(index: noTrailsIndex)
 		}
-        return self.substring(to: endIndex)
+        return self.substringTo(index: endIndex)
 	}
 	
 	var pathExtension: String {
@@ -564,7 +564,7 @@ extension String {
 		guard endIndex != startIndex else {
 			return ""
 		}
-        return self.substring(with: endIndex.successor()..<noTrailsIndex)
+        return self.substringWith(range: endIndex.successor()..<noTrailsIndex)
 	}
 
 	var stringByResolvingSymlinksInPath: String {

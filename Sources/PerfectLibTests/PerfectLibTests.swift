@@ -762,7 +762,7 @@ class PerfectLibTests: XCTestCase {
 	func testSubstringTo() {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        let res = src.substring(to: src.startIndex.advanced(by: 5))
+        let res = src.substringTo(index: src.startIndex.advanced(by: 5))
 		
 		XCTAssert(res == "ABCDE")
 	}
@@ -771,10 +771,10 @@ class PerfectLibTests: XCTestCase {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		
-        let res = src.range(of: "DEF")
+        let res = src.rangeOf(string: "DEF")
 		XCTAssert(res == src.startIndex.advanced(by: 3)..<src.startIndex.advanced(by: 6))
 		
-        let res2 = src.range(of: "FED")
+        let res2 = src.rangeOf(string: "FED")
 		XCTAssert(res2 == nil)
 		
 		
@@ -785,8 +785,9 @@ class PerfectLibTests: XCTestCase {
 	func testSubstringWith() {
 		
 		let src = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        
 		let range = src.startIndex.advanced(by: 3)..<src.startIndex.advanced(by: 6)
-        XCTAssert("DEF" == src.substring(with: range))
+        XCTAssert("DEF" == src.substringWith(range: range))
 	}
 	
 	func testICUFormatDate() {
