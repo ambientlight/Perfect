@@ -15,7 +15,6 @@
 	}
     
     #if os(Linux)
-    //there is a mismatch between OS X and Ubuntu Swift base library interfaces for April Swift snapshot.
     
         extension String {
         
