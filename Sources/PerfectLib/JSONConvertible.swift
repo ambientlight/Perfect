@@ -254,6 +254,18 @@ extension Dictionary: JSONConvertible {
 	}
 }
 
+/// added temporarely to prevent Apple's SourceKitServer crashing, which happens for string extentions
+public func JSONConvertibleGenerated(fromString string:String) throws -> JSONConvertible {
+    let state = JSONDecodeState()
+    state.g = string.unicodeScalars.makeIterator()
+    
+    let o = try state.readObject()
+    if let _ = o as? JSONDecodeState.EOF {
+        throw JSONConversionError.SyntaxError
+    }
+    return o
+}
+
 /// Decode the JSON object represented by the String.
 extension String {
 	public func jsonDecode() throws -> JSONConvertible {
