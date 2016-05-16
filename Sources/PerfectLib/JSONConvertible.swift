@@ -255,6 +255,30 @@ extension Dictionary: JSONConvertible {
 }
 
 /// added temporarely to prevent Apple's SourceKitServer crashing, which happens for string extentions
+public func JSONEncodedString(fromJSONEncodedDict jsonDict: [String: Any]) throws -> String {
+    var s = "{"
+    
+    var first = true
+    
+    for (k, v) in jsonDict {
+        guard let strKey = k as? String else {
+            throw JSONConversionError.InvalidKey(k)
+        }
+        if !first {
+            s.append(",")
+        } else {
+            first = false
+        }
+        s.append(try strKey.jsonEncodedString())
+        s.append(":")
+        s.append(try jsonEncodedStringWorkAround(o: v))
+    }
+    
+    s.append("}")
+    return s
+}
+
+/// added temporarely to prevent Apple's SourceKitServer crashing, which happens for string extentions
 public func JSONConvertibleGenerated(fromString string:String) throws -> JSONConvertible {
     let state = JSONDecodeState()
     state.g = string.unicodeScalars.makeIterator()
